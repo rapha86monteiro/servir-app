@@ -52,6 +52,9 @@ export default function SchedulesPage() {
   const [newModal, setNewModal] = useState(false);
   const [memberModal, setMemberModal] = useState<string | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
+  const [memberTeamFilter, setMemberTeamFilter] = useState("");
+  // Equipes para o filtro: admin vê todas, líder também (para escalar de outras equipes)
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [newServiceId, setNewServiceId] = useState("");
   const [newTeamId, setNewTeamId] = useState("");
   const [copied, setCopied] = useState(false);
@@ -61,14 +64,17 @@ export default function SchedulesPage() {
   async function load() {
     if (!appUser) return;
     setLoading(true);
-    const [t, s, m] = await Promise.all([
+    const [t, s, m, todasEquipes] = await Promise.all([
       appUser.role === "admin" ? getTeams() : getTeamsByLeader(appUser.uid),
       getServices(),
       getMembers(),
+      getTeams(),
     ]);
     setTeams(t);
     setServices(s);
     setMembers(m);
+    todasEquipes.sort((a, b) => a.name.localeCompare(b.name));
+    setAllTeams(todasEquipes);
 
     let scheds: Schedule[];
     if (appUser.role === "admin") {
@@ -170,8 +176,19 @@ export default function SchedulesPage() {
     ? Object.values(selected.positions).reduce((acc, s) => acc + (s?.length ?? 0), 0)
     : 0;
 
+  const allSelectedSlots = selected?.positions
+    ? Object.values(selected.positions).flat()
+    : [];
+  const confirmadosCount = allSelectedSlots.filter((s) => s.confirmed === true).length;
+  const recusadosCount = allSelectedSlots.filter((s) => s.confirmed === false).length;
+  const pendentesCount = allSelectedSlots.filter((s) => s.confirmed === null).length;
+  const percentConfirmado = totalEscalados > 0 ? Math.round((confirmadosCount / totalEscalados) * 100) : 0;
+
   const filteredMembers = members.filter(
-    (m) => m.active && m.name.toLowerCase().includes(memberSearch.toLowerCase())
+    (m) =>
+      m.active &&
+      m.name.toLowerCase().includes(memberSearch.toLowerCase()) &&
+      (!memberTeamFilter || m.teamId === memberTeamFilter)
   );
 
   if (loading) {
@@ -282,6 +299,39 @@ export default function SchedulesPage() {
             </div>
           )}
 
+          {/* Termômetro da escala */}
+          {selected && totalEscalados > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-gray-900">Termômetro da Escala</p>
+                <span className={`text-sm font-bold ${percentConfirmado >= 80 ? "text-green-600" : percentConfirmado >= 50 ? "text-amber-600" : "text-red-500"}`}>
+                  {percentConfirmado}% confirmado
+                </span>
+              </div>
+              <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                <div
+                  className="h-full bg-green-500 transition-all"
+                  style={{ width: `${totalEscalados > 0 ? (confirmadosCount / totalEscalados) * 100 : 0}%` }}
+                />
+                <div
+                  className="h-full bg-red-400 transition-all"
+                  style={{ width: `${totalEscalados > 0 ? (recusadosCount / totalEscalados) * 100 : 0}%` }}
+                />
+              </div>
+              <div className="flex gap-4 mt-2 text-xs">
+                <span className="flex items-center gap-1 text-green-600">
+                  <span className="w-2 h-2 rounded-full bg-green-500" /> {confirmadosCount} confirmados
+                </span>
+                <span className="flex items-center gap-1 text-red-500">
+                  <span className="w-2 h-2 rounded-full bg-red-400" /> {recusadosCount} recusados
+                </span>
+                <span className="flex items-center gap-1 text-gray-400">
+                  <span className="w-2 h-2 rounded-full bg-gray-300" /> {pendentesCount} pendentes
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Cards de posições */}
           {selected && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -360,7 +410,7 @@ export default function SchedulesPage() {
       </Modal>
 
       {/* Modal escalar membro */}
-      <Modal open={!!memberModal} onClose={() => setMemberModal(null)} title={`Escalar em ${memberModal}`} size="sm">
+      <Modal open={!!memberModal} onClose={() => { setMemberModal(null); setMemberTeamFilter(""); }} title={`Escalar em ${memberModal}`} size="sm">
         <div className="space-y-3">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -372,6 +422,17 @@ export default function SchedulesPage() {
               autoFocus
             />
           </div>
+          {/* Filtro por equipe — permite escalar de qualquer equipe */}
+          <select
+            value={memberTeamFilter}
+            onChange={(e) => setMemberTeamFilter(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">Todas as equipes</option>
+            {allTeams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
           <div className="max-h-72 overflow-y-auto space-y-1">
             {filteredMembers.map((m) => {
               const team = teams.find((t) => t.id === m.teamId);
