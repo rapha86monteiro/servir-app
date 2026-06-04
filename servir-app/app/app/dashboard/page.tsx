@@ -77,16 +77,18 @@ export default function DashboardPage() {
     async function load() {
       if (!appUser) return;
       setLoading(true);
-      const [svcs, allTeams, allMembers, subs] = await Promise.all([
-        getServices(),
-        getTeams(),
-        getMembers(),
-        getSubstituicoesAbertas(),
-      ]);
-      setServices(svcs);
-      setTeams(allTeams);
-      setMembers(allMembers);
-      setSubstituicoes(subs);
+      try {
+        const svcs = await getServices().catch(() => []);
+        const allTeams = await getTeams().catch(() => []);
+        const allMembers = await getMembers().catch(() => []);
+        const subs = await getSubstituicoesAbertas().catch(() => []);
+        setServices(svcs);
+        setTeams(allTeams);
+        setMembers(allMembers);
+        setSubstituicoes(subs);
+      } catch (err) {
+        console.error("Erro ao carregar dashboard:", err);
+      }
       setLoading(false);
     }
     load();
