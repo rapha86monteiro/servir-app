@@ -35,14 +35,17 @@ export default function AvisosPage() {
         { target: "all" },
         { title: `📢 ${title}`, message, type: "announcement", data: { url: "/app/dashboard" } }
       );
+      const errText = typeof res.error === "string" ? res.error : JSON.stringify(res.error);
       if (res.error) {
-        setResult({ ok: false, text: "Erro: " + res.error });
+        setResult({ ok: false, text: "Erro: " + errText });
+      } else if (res.tokenCount === 0) {
+        setResult({ ok: false, text: "Nenhum usuário tem notificações ativadas ainda. Ative no menu Notificações primeiro." });
       } else {
-        setResult({ ok: true, text: `Aviso enviado! ${res.success ?? 0} dispositivo(s) notificado(s).` });
+        setResult({ ok: true, text: `Aviso enviado! ${res.success ?? 0}/${res.tokenCount} dispositivo(s) notificado(s).` });
         setTitle(""); setMessage("");
       }
-    } catch (err) {
-      setResult({ ok: false, text: "Erro: " + String(err) });
+    } catch (err: any) {
+      setResult({ ok: false, text: "Erro: " + (err?.message ?? JSON.stringify(err)) });
     }
     setSending(false);
   }
