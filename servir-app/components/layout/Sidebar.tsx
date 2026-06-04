@@ -19,6 +19,7 @@ import {
   RefreshCw,
   User,
   Settings,
+  UserCheck2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +38,7 @@ const navItems = [
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, minRole: "leader" },
   { href: "/app/historico", label: "Histórico", icon: History, minRole: "leader" },
   { href: "/app/forms", label: "Formulários", icon: FileText, minRole: "leader" },
+  { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, minRole: "admin" },
   { href: "/app/teams", label: "Equipes", icon: Users, minRole: "admin" },
 ] as const;
 
