@@ -12,6 +12,7 @@ import {
   LogOut,
   ChurchIcon,
   ClipboardCheck,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/app/members", label: "Membros", icon: UserCheck, adminOnly: false },
   { href: "/app/schedules", label: "Escalas", icon: ClipboardList, adminOnly: false },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, adminOnly: false },
+  { href: "/app/historico", label: "Histórico", icon: History, adminOnly: false },
   { href: "/app/forms", label: "Formulários", icon: FileText, adminOnly: false },
   { href: "/app/teams", label: "Equipes", icon: Users, adminOnly: true },
   { href: "/app/services", label: "Cultos", icon: CalendarDays, adminOnly: true },
@@ -93,7 +95,7 @@ export function Sidebar() {
 
       {/* Bottom nav mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex">
-        {visibleItems.slice(0, 5).map(({ href, label, icon: Icon }) => (
+        {visibleItems.slice(0, 4).map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
