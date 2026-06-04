@@ -8,9 +8,11 @@ import {
   LayoutDashboard, Calendar, ClipboardList, RefreshCw, UserCheck,
   Bell, ClipboardCheck, History, FileText, Megaphone, UserCheck2,
   Users, ShieldCheck, LogOut, MoreHorizontal, X, BarChart3, CalendarX, Award, Image as ImageIcon,
+  Moon, Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { signOut } from "@/lib/auth";
 
 const allItems = [
@@ -37,6 +39,7 @@ const allItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { appUser } = useAuth();
+  const { dark, toggle } = useTheme();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -97,6 +100,13 @@ export function Sidebar() {
             <span className="text-xs text-white/40">{isCoord ? "Coordenador" : isLeader ? "Líder" : "Voluntário"}</span>
           </div>
           <button
+            onClick={toggle}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            {dark ? <Sun size={17} /> : <Moon size={17} />}
+            {dark ? "Modo claro" : "Modo escuro"}
+          </button>
+          <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:bg-white/10 hover:text-white transition-colors"
           >
@@ -152,6 +162,13 @@ export function Sidebar() {
                 <span className="text-[10px] text-center">{label}</span>
               </Link>
             ))}
+            <button
+              onClick={() => { toggle(); setMoreOpen(false); }}
+              className="flex flex-col items-center gap-1 py-4 text-xs font-medium text-gray-600 border-b border-gray-100"
+            >
+              {dark ? <Sun size={22} /> : <Moon size={22} />}
+              <span className="text-[10px]">{dark ? "Claro" : "Escuro"}</span>
+            </button>
             <button
               onClick={handleSignOut}
               className="flex flex-col items-center gap-1 py-4 text-xs font-medium text-red-400 border-b border-gray-100"
