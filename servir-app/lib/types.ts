@@ -1,10 +1,12 @@
 export type Role = "admin" | "leader" | "member";
+export type Funcao = "Coordenador" | "Líder" | "Co-líder" | "Voluntário";
 
 export interface AppUser {
   uid: string;
   name: string;
   email: string;
   role: Role;
+  funcao?: Funcao;
   teamIds: string[];
   memberId?: string;
 }
@@ -17,11 +19,10 @@ export interface Team {
   inviteToken?: string;
 }
 
-export type Funcao = "Líder" | "Co-líder" | "Voluntário";
-
 export interface Member {
   id: string;
   name: string;
+  email?: string;
   phone: string;
   teamId: string;
   funcao: Funcao;
