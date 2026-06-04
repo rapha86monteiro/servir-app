@@ -1,5 +1,6 @@
 export type Role = "admin" | "leader" | "member";
 export type Funcao = "Coordenador" | "Líder" | "Co-líder" | "Voluntário";
+export type UserStatus = "pending" | "approved" | "rejected";
 
 export interface AppUser {
   uid: string;
@@ -9,6 +10,10 @@ export interface AppUser {
   funcao?: Funcao;
   teamIds: string[];
   memberId?: string;
+  status?: UserStatus;
+  phone?: string;
+  aniversario?: string;
+  photo?: string;
 }
 
 export interface Team {
