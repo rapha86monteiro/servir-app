@@ -71,10 +71,21 @@ export default function AprovacoesPage() {
   }
 
   async function reject(user: AppUser) {
-    if (!confirm(`Rejeitar cadastro de ${user.name}?`)) return;
+    if (!confirm(`Rejeitar e excluir o cadastro de ${user.name}? O e-mail ficará liberado para um novo cadastro.`)) return;
     setActing(user.uid);
     try {
-      await updateDoc(doc(db, "users", user.uid), { status: "rejected" });
+      // Deleta a conta completamente (Auth + Firestore) para liberar o e-mail
+      const res = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: user.uid }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        // Fallback: ao menos marca como rejeitado
+        await updateDoc(doc(db, "users", user.uid), { status: "rejected" });
+        alert("Aviso: cadastro marcado como rejeitado, mas o e-mail pode continuar preso. (" + data.error + ")");
+      }
       load();
     } catch (err) {
       alert("Erro: " + String(err));
