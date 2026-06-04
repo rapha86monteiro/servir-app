@@ -7,7 +7,7 @@ import Image from "next/image";
 import {
   LayoutDashboard, Calendar, ClipboardList, RefreshCw, UserCheck,
   Bell, ClipboardCheck, History, FileText, Megaphone, UserCheck2,
-  Users, ShieldCheck, LogOut, MoreHorizontal, X,
+  Users, ShieldCheck, LogOut, MoreHorizontal, X, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +22,7 @@ const allItems = [
   { href: "/app/notificacoes", label: "Notificações", icon: Bell, role: "all" },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, role: "leader" },
   { href: "/app/historico", label: "Histórico", icon: History, role: "leader" },
+  { href: "/app/relatorio-mensal", label: "Relatório Mensal", icon: BarChart3, role: "leader" },
   { href: "/app/forms", label: "Formulários", icon: FileText, role: "leader" },
   { href: "/app/avisos", label: "Avisos", icon: Megaphone, role: "admin" },
   { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, role: "admin" },
