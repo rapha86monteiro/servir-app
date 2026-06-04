@@ -100,10 +100,11 @@ export default function MembersPage() {
   }, [profileOpen]);
 
   async function handleEnableNotifications() {
-    if (!appUser) return;
+    const uid = auth.currentUser?.uid ?? appUser?.uid;
+    if (!uid) return;
     setNotifBusy(true);
     setNotifMsg(null);
-    const r = await requestNotificationPermission(appUser.uid);
+    const r = await requestNotificationPermission(uid);
     setNotifMsg({ ok: r.ok, text: r.message });
     if (r.ok) setNotifEnabled(true);
     setNotifBusy(false);
@@ -131,15 +132,20 @@ export default function MembersPage() {
   }
 
   async function loadProfile() {
-    if (!appUser) return;
-    const snap = await getDoc(doc(db, "users", appUser.uid));
-    const data: any = snap.data() ?? {};
-    setProfile({
-      name: appUser.name ?? "",
-      phone: data.phone ?? "",
-      aniversario: data.aniversario ?? "",
-      photo: data.photo ?? "",
-    });
+    const uid = auth.currentUser?.uid ?? appUser?.uid;
+    if (!uid) return;
+    try {
+      const snap = await getDoc(doc(db, "users", uid));
+      const data: any = snap.data() ?? {};
+      setProfile({
+        name: data.name ?? appUser?.name ?? "",
+        phone: data.phone ?? "",
+        aniversario: data.aniversario ?? "",
+        photo: data.photo ?? "",
+      });
+    } catch (err) {
+      console.error("Erro ao carregar perfil:", err);
+    }
   }
 
   function openCreate() {
@@ -185,8 +191,9 @@ export default function MembersPage() {
   }
 
   async function handleSaveProfile() {
-    if (!appUser?.uid) {
-      setProfMsg({ type: "error", text: "Usuário não identificado. Tente sair e entrar de novo." });
+    const uid = auth.currentUser?.uid ?? appUser?.uid;
+    if (!uid) {
+      setProfMsg({ type: "error", text: "Usuário não identificado. Recarregue a página." });
       return;
     }
     setSavingProfile(true);
@@ -197,10 +204,9 @@ export default function MembersPage() {
         phone: String(profile.phone ?? ""),
         aniversario: String(profile.aniversario ?? ""),
       };
-      // Photo só envia se houver
       if (profile.photo) data.photo = String(profile.photo);
 
-      await updateDoc(doc(db, "users", appUser.uid), data);
+      await updateDoc(doc(db, "users", uid), data);
       setProfMsg({ type: "success", text: "Perfil atualizado!" });
       setTimeout(() => setProfMsg(null), 3000);
     } catch (err: any) {
