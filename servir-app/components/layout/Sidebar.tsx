@@ -21,6 +21,7 @@ import {
   Settings,
   UserCheck2,
   ShieldCheck,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +41,7 @@ const navItems: { href: string; label: string; icon: any; module: ModuleKey }[] 
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, module: "relatorio" },
   { href: "/app/historico", label: "Histórico", icon: History, module: "historico" },
   { href: "/app/forms", label: "Formulários", icon: FileText, module: "forms" },
+  { href: "/app/avisos", label: "Avisos", icon: Megaphone, module: "avisos" },
   { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, module: "aprovacoes" },
   { href: "/app/teams", label: "Equipes", icon: Users, module: "teams" },
   { href: "/app/perfis", label: "Perfis", icon: ShieldCheck, module: "perfis" },
