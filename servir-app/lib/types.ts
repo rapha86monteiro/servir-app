@@ -1,4 +1,4 @@
-export type Role = "admin" | "leader";
+export type Role = "admin" | "leader" | "member";
 
 export interface AppUser {
   uid: string;
@@ -6,6 +6,7 @@ export interface AppUser {
   email: string;
   role: Role;
   teamIds: string[];
+  memberId?: string;
 }
 
 export interface Team {
@@ -13,6 +14,7 @@ export interface Team {
   name: string;
   leaderIds: string[];
   memberIds: string[];
+  inviteToken?: string;
 }
 
 export type Funcao = "Líder" | "Co-líder" | "Voluntário";
@@ -25,6 +27,7 @@ export interface Member {
   funcao: Funcao;
   aniversario: string;
   active: boolean;
+  uid?: string;
 }
 
 export type Turno = "Manhã" | "Tarde" | "Noite" | "Especial";
@@ -47,6 +50,7 @@ export interface ScheduleSlot {
   teamName: string;
   confirmed: boolean | null;
   justification: string;
+  needsSubstitute?: boolean;
 }
 
 export const POSITIONS = [
@@ -79,6 +83,26 @@ export interface Schedule {
   leaderId: string;
   positions: PositionSlots;
   publicToken: string;
+  createdAt: string;
+}
+
+export type StatusSubstituicao = "aberta" | "aceita" | "cancelada";
+
+export interface Substituicao {
+  id: string;
+  scheduleId: string;
+  serviceTitle: string;
+  serviceDate: string;
+  serviceTurno: string;
+  position: string;
+  teamId: string;
+  teamName: string;
+  membroId: string;
+  membroName: string;
+  justification: string;
+  status: StatusSubstituicao;
+  substitutoId?: string;
+  substitutoName?: string;
   createdAt: string;
 }
 
