@@ -16,6 +16,7 @@ import {
   UserCog,
   MoreHorizontal,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,18 +25,20 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 
+// role: undefined = todos, "admin" = só admin, "leader" = admin+líder
 const navItems = [
-  { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, adminOnly: false },
-  { href: "/app/members", label: "Membros", icon: UserCheck, adminOnly: false },
-  { href: "/app/schedules", label: "Escalas", icon: ClipboardList, adminOnly: false },
-  { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, adminOnly: false },
-  { href: "/app/historico", label: "Histórico", icon: History, adminOnly: false },
-  { href: "/app/calendario", label: "Calendário", icon: Calendar, adminOnly: false },
-  { href: "/app/forms", label: "Formulários", icon: FileText, adminOnly: false },
-  { href: "/app/teams", label: "Equipes", icon: Users, adminOnly: true },
-  { href: "/app/services", label: "Cultos", icon: CalendarDays, adminOnly: true },
-  { href: "/app/lideres", label: "Líderes", icon: UserCog, adminOnly: true },
-];
+  { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, minRole: undefined },
+  { href: "/app/schedules", label: "Escalas", icon: ClipboardList, minRole: undefined },
+  { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, minRole: undefined },
+  { href: "/app/calendario", label: "Calendário", icon: Calendar, minRole: undefined },
+  { href: "/app/members", label: "Membros", icon: UserCheck, minRole: "leader" },
+  { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, minRole: "leader" },
+  { href: "/app/historico", label: "Histórico", icon: History, minRole: "leader" },
+  { href: "/app/forms", label: "Formulários", icon: FileText, minRole: "leader" },
+  { href: "/app/teams", label: "Equipes", icon: Users, minRole: "admin" },
+  { href: "/app/services", label: "Cultos", icon: CalendarDays, minRole: "admin" },
+  { href: "/app/lideres", label: "Líderes", icon: UserCog, minRole: "admin" },
+] as const;
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -49,9 +52,13 @@ export function Sidebar() {
     router.push("/login");
   };
 
-  const visibleItems = navItems.filter(
-    (item) => !item.adminOnly || appUser?.role === "admin"
-  );
+  const role = appUser?.role ?? "member";
+  const visibleItems = navItems.filter((item) => {
+    if (!item.minRole) return true;
+    if (item.minRole === "leader") return role === "leader" || role === "admin";
+    if (item.minRole === "admin") return role === "admin";
+    return true;
+  });
 
   return (
     <>
