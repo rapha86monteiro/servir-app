@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { query, collection, where, getDocs, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { query, collection, where, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc as firestoreDoc, setDoc } from "firebase/firestore";
@@ -12,9 +12,11 @@ import type { Team } from "@/lib/types";
 
 export default function ConvitePage() {
   const { token } = useParams<{ token: string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLeader, setIsLeader] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -22,15 +24,30 @@ export default function ConvitePage() {
 
   useEffect(() => {
     async function load() {
-      const q = query(collection(db, "teams"), where("inviteToken", "==", token));
-      const snap = await getDocs(q);
+      // Tenta buscar como link de líder primeiro
+      const tipo = searchParams.get("tipo");
+      const queryField = tipo === "lider" ? "leaderInviteToken" : "inviteToken";
+
+      let q = query(collection(db, "teams"), where(queryField, "==", token));
+      let snap = await getDocs(q);
+
+      if (snap.empty) {
+        // Tenta o outro tipo
+        const otherField = tipo === "lider" ? "inviteToken" : "leaderInviteToken";
+        q = query(collection(db, "teams"), where(otherField, "==", token));
+        snap = await getDocs(q);
+        if (!snap.empty) setIsLeader(otherField === "leaderInviteToken");
+      } else {
+        setIsLeader(queryField === "leaderInviteToken");
+      }
+
       if (!snap.empty) {
         setTeam({ id: snap.docs[0].id, ...snap.docs[0].data() } as Team);
       }
       setLoading(false);
     }
     load();
-  }, [token]);
+  }, [token, searchParams]);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +71,8 @@ export default function ConvitePage() {
         uid: cred.user.uid,
         name: form.name,
         email: form.email,
-        role: "member",
+        role: isLeader ? "leader" : "member",
+        funcao: isLeader ? "Líder" : "Voluntário",
         teamIds: [team!.id],
       });
       setDone(true);
@@ -114,43 +132,21 @@ export default function ConvitePage() {
 
         <div className="bg-white rounded-2xl p-6 shadow-2xl space-y-4">
           <div className="text-center pb-2 border-b border-gray-100">
-            <p className="font-bold text-gray-900">Convite para a equipe</p>
+            <p className="font-bold text-gray-900">
+              Convite para {isLeader ? "Liderar" : ""} a equipe
+            </p>
             <p className="text-lg font-bold text-black mt-0.5">{team.name}</p>
-            <p className="text-gray-400 text-xs mt-1">Crie sua conta para acessar o app</p>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-block mt-1 ${isLeader ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+              {isLeader ? "👑 Líder" : "🙌 Voluntário"}
+            </span>
+            <p className="text-gray-400 text-xs mt-2">Crie sua conta para acessar o app</p>
           </div>
 
           <form onSubmit={handleRegister} className="space-y-3">
-            <Input
-              label="Nome completo"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Seu nome"
-              required
-            />
-            <Input
-              label="E-mail"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="seu@email.com"
-              required
-            />
-            <Input
-              label="Senha"
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Mínimo 6 caracteres"
-              required
-            />
-            <Input
-              label="Confirmar senha"
-              type="password"
-              value={form.confirmPassword}
-              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-              placeholder="Repita a senha"
-              required
-            />
+            <Input label="Nome completo" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Seu nome" required />
+            <Input label="E-mail" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="seu@email.com" required />
+            <Input label="Senha" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Mínimo 6 caracteres" required />
+            <Input label="Confirmar senha" type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} placeholder="Repita a senha" required />
             {error && (
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
             )}
