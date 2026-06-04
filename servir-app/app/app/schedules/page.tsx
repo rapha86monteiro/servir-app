@@ -8,13 +8,15 @@ import {
 import { getTeams, getTeamsByLeader } from "@/lib/firestore/teams";
 import { getServices } from "@/lib/firestore/services";
 import { getMembers } from "@/lib/firestore/members";
+import { getIndisponibilidades } from "@/lib/firestore/disponibilidade";
+import type { Indisponibilidade } from "@/lib/types";
 import type { Schedule, Team, Service, Member, PositionSlots, ScheduleSlot } from "@/lib/types";
 import { POSITIONS } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Input";
-import { Plus, Trash2, Share2, Copy, X, Search, ChevronDown, CopyPlus, ArrowLeftRight } from "lucide-react";
+import { Plus, Trash2, Share2, Copy, X, Search, ChevronDown, CopyPlus, ArrowLeftRight, UserCheck, Check } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 
@@ -61,6 +63,10 @@ export default function SchedulesPage() {
   // Trocar voluntários
   const [swapModal, setSwapModal] = useState(false);
   const [swapA, setSwapA] = useState<{ position: string; memberId: string } | null>(null);
+  // Check-in
+  const [checkinMode, setCheckinMode] = useState(false);
+  // Indisponibilidades
+  const [indisponibilidades, setIndisponibilidades] = useState<Indisponibilidade[]>([]);
   const [newServiceId, setNewServiceId] = useState("");
   const [newTeamId, setNewTeamId] = useState("");
   const [copied, setCopied] = useState(false);
@@ -70,17 +76,19 @@ export default function SchedulesPage() {
   async function load() {
     if (!appUser) return;
     setLoading(true);
-    const [t, s, m, todasEquipes] = await Promise.all([
+    const [t, s, m, todasEquipes, indisp] = await Promise.all([
       appUser.role === "admin" ? getTeams() : getTeamsByLeader(appUser.uid),
       getServices(),
       getMembers(),
       getTeams(),
+      getIndisponibilidades().catch(() => []),
     ]);
     setTeams(t);
     setServices(s);
     setMembers(m);
     todasEquipes.sort((a, b) => a.name.localeCompare(b.name));
     setAllTeams(todasEquipes);
+    setIndisponibilidades(indisp);
 
     let scheds: Schedule[];
     if (appUser.role === "admin") {
@@ -208,6 +216,28 @@ export default function SchedulesPage() {
     setSelected(updatedSched);
     setSchedules((prev) => prev.map((s) => s.id === selected.id ? updatedSched : s));
     setMemberModal(null);
+  }
+
+  // Marca presença real (check-in)
+  async function setCheckIn(position: string, memberId: string, value: boolean) {
+    if (!selected) return;
+    const positions: PositionSlots = { ...selected.positions };
+    positions[position] = (positions[position] ?? []).map((s) =>
+      s.memberId === memberId ? { ...s, checkedIn: value } : s
+    );
+    await updateSchedulePositions(selected.id, positions);
+    const updated = { ...selected, positions };
+    setSelected(updated);
+    setSchedules((prev) => prev.map((s) => s.id === selected.id ? updated : s));
+  }
+
+  // Verifica se um membro está indisponível na data da escala selecionada
+  function isIndisponivel(memberId: string): string | null {
+    if (!selected) return null;
+    const ind = indisponibilidades.find(
+      (i) => i.memberId === memberId && i.date === selected.serviceDate
+    );
+    return ind ? (ind.motivo || "Indisponível") : null;
   }
 
   async function removeMember(position: string, memberId: string) {
@@ -387,6 +417,18 @@ export default function SchedulesPage() {
             </div>
           )}
 
+          {/* Botão modo check-in */}
+          {selected && totalEscalados > 0 && (
+            <button
+              onClick={() => setCheckinMode(!checkinMode)}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                checkinMode ? "bg-[#0a0a0a] text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <UserCheck size={16} /> {checkinMode ? "Sair do modo check-in" : "Fazer check-in (presença no dia)"}
+            </button>
+          )}
+
           {/* Termômetro da escala */}
           {selected && totalEscalados > 0 && (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -443,30 +485,51 @@ export default function SchedulesPage() {
                       <ul className="space-y-2 mb-3">
                         {slots.map((slot) => (
                           <li key={slot.memberId} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${slot.confirmed === true ? "bg-green-400" : slot.confirmed === false ? "bg-red-400" : "bg-gray-300"}`} />
-                              <div>
-                                <p className="text-sm font-medium text-gray-800 leading-none">{slot.memberName}</p>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-gray-800 leading-none truncate">{slot.memberName}</p>
                                 <p className="text-xs text-gray-400">{slot.teamName}</p>
                               </div>
                             </div>
-                            <button
-                              onClick={() => removeMember(position, slot.memberId)}
-                              className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors flex-shrink-0"
-                            >
-                              <X size={12} />
-                            </button>
+                            {checkinMode ? (
+                              <div className="flex gap-1 flex-shrink-0">
+                                <button
+                                  onClick={() => setCheckIn(position, slot.memberId, true)}
+                                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${slot.checkedIn === true ? "bg-green-500 text-white" : "border border-gray-200 text-gray-300 hover:border-green-400 hover:text-green-500"}`}
+                                  title="Presente"
+                                >
+                                  <Check size={13} />
+                                </button>
+                                <button
+                                  onClick={() => setCheckIn(position, slot.memberId, false)}
+                                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${slot.checkedIn === false ? "bg-red-500 text-white" : "border border-gray-200 text-gray-300 hover:border-red-400 hover:text-red-500"}`}
+                                  title="Faltou"
+                                >
+                                  <X size={13} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => removeMember(position, slot.memberId)}
+                                className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors flex-shrink-0"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
                     )}
 
-                    <button
-                      onClick={() => { setMemberModal(position); setMemberSearch(""); }}
-                      className="w-full py-2 border border-dashed border-gray-200 rounded-lg text-xs text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors active:bg-blue-50"
-                    >
-                      + Escalar pessoa
-                    </button>
+                    {!checkinMode && (
+                      <button
+                        onClick={() => { setMemberModal(position); setMemberSearch(""); }}
+                        className="w-full py-2 border border-dashed border-gray-200 rounded-lg text-xs text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors active:bg-blue-50"
+                      >
+                        + Escalar pessoa
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -591,16 +654,26 @@ export default function SchedulesPage() {
             {filteredMembers.map((m) => {
               const team = teams.find((t) => t.id === m.teamId);
               const alreadyIn = memberModal && selected?.positions[memberModal]?.some((s) => s.memberId === m.id);
+              const indispMotivo = isIndisponivel(m.id);
               return (
                 <button
                   key={m.id}
                   disabled={!!alreadyIn}
-                  onClick={() => memberModal && addMemberToPosition(memberModal, m)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-colors ${alreadyIn ? "opacity-40 cursor-not-allowed bg-gray-50" : "hover:bg-blue-50 active:bg-blue-100"}`}
+                  onClick={() => {
+                    if (indispMotivo && !confirm(`⚠️ ${m.name} marcou que NÃO pode servir neste dia (${indispMotivo}).\n\nEscalar mesmo assim?`)) return;
+                    memberModal && addMemberToPosition(memberModal, m);
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-colors ${alreadyIn ? "opacity-40 cursor-not-allowed bg-gray-50" : indispMotivo ? "bg-red-50 hover:bg-red-100" : "hover:bg-blue-50 active:bg-blue-100"}`}
                 >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{m.name}</p>
-                    <p className="text-xs text-gray-400">{team?.name}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                      {m.name}
+                      {indispMotivo && <span className="text-xs text-red-500">🚫</span>}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {team?.name}
+                      {indispMotivo && <span className="text-red-500 ml-1">· Indisponível</span>}
+                    </p>
                   </div>
                   {alreadyIn && <span className="text-xs text-green-500 font-medium">✓ Escalado</span>}
                 </button>
