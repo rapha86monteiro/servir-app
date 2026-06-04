@@ -70,7 +70,7 @@ function compressImage(file: File, maxWidth = 400): Promise<string> {
 const empty = { name: "", email: "", phone: "", teamId: "", funcao: "Voluntário" as Funcao, aniversario: "", active: true };
 
 export default function MembersPage() {
-  const { appUser } = useAuth();
+  const { appUser, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [search, setSearch] = useState("");
@@ -100,7 +100,7 @@ export default function MembersPage() {
   }, [profileOpen]);
 
   async function handleEnableNotifications() {
-    const uid = auth.currentUser?.uid ?? appUser?.uid;
+    const uid = firebaseUser?.uid ?? auth.currentUser?.uid ?? appUser?.uid;
     if (!uid) return;
     setNotifBusy(true);
     setNotifMsg(null);
@@ -132,7 +132,7 @@ export default function MembersPage() {
   }
 
   async function loadProfile() {
-    const uid = auth.currentUser?.uid ?? appUser?.uid;
+    const uid = firebaseUser?.uid ?? auth.currentUser?.uid ?? appUser?.uid;
     if (!uid) return;
     try {
       const snap = await getDoc(doc(db, "users", uid));
@@ -191,7 +191,8 @@ export default function MembersPage() {
   }
 
   async function handleSaveProfile() {
-    const uid = auth.currentUser?.uid ?? appUser?.uid;
+    const uid = firebaseUser?.uid ?? auth.currentUser?.uid ?? appUser?.uid;
+    console.log("[DEBUG] save profile uid:", uid, { firebaseUser: firebaseUser?.uid, authCurrent: auth.currentUser?.uid, appUserUid: appUser?.uid });
     if (!uid) {
       setProfMsg({ type: "error", text: "Usuário não identificado. Recarregue a página." });
       return;
