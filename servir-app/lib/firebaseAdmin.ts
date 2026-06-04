@@ -105,10 +105,14 @@ export async function getTokensForUsers(uids: string[]): Promise<string[]> {
 export async function getAllUserTokens(): Promise<string[]> {
   const a = getAdminApp();
   const db = a.firestore();
-  const snap = await db.collection("users").where("status", "==", "approved").get();
+  // Pega todos os usuários e filtra apenas os pendentes/rejeitados
+  const snap = await db.collection("users").get();
   const tokens: string[] = [];
   snap.docs.forEach((d) => {
     const data = d.data();
+    // Inclui se status for "approved" OU se não tiver status (admin antigo)
+    const status = data.status;
+    if (status === "pending" || status === "rejected") return;
     if (Array.isArray(data.fcmTokens)) tokens.push(...data.fcmTokens);
   });
   return tokens;
