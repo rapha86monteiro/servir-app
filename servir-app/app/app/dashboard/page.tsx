@@ -7,6 +7,7 @@ import { getTeams } from "@/lib/firestore/teams";
 import { getMembers } from "@/lib/firestore/members";
 import { getSubstituicoesAbertas } from "@/lib/firestore/substituicoes";
 import { getAvisos, type Aviso } from "@/lib/firestore/avisos";
+import { getVersiculoDoDia } from "@/lib/versiculos";
 import type { Service, Team, Member, Substituicao } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Cake, ChevronRight, ChevronLeft, RefreshCw, Calendar, MessageSquare, Megaphone, Pin } from "lucide-react";
@@ -155,6 +156,18 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-gray-900">Olá, {appUser?.name?.split(" ")[0]} 👋</h1>
         <p className="text-gray-400 text-sm">Departamento Servir · Belém Church</p>
       </div>
+
+      {/* Devocional do dia */}
+      {(() => {
+        const v = getVersiculoDoDia();
+        return (
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-4">
+            <p className="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">📖 Palavra do dia</p>
+            <p className="text-sm text-gray-700 italic leading-relaxed">"{v.texto}"</p>
+            <p className="text-xs font-semibold text-indigo-500 mt-2">— {v.ref}</p>
+          </div>
+        );
+      })()}
 
       {/* Mural de avisos */}
       {avisos.length > 0 && (
