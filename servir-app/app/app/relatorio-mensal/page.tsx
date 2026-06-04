@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ReportTabs } from "@/components/layout/ReportTabs";
 import { getSchedules, getSchedulesByTeam } from "@/lib/firestore/schedules";
 import { getTeams, getTeamsByLeader } from "@/lib/firestore/teams";
 import { getRelatorios } from "@/lib/firestore/relatorios";
@@ -103,9 +104,11 @@ export default function RelatorioMensalPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Relatório Mensal</h1>
+        <h1 className="text-xl font-bold text-gray-900">Relatórios</h1>
         <p className="text-gray-500 text-sm">Visão consolidada por equipe e voluntário</p>
       </div>
+
+      <ReportTabs />
 
       {/* Navegação de mês */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex items-center justify-between">
