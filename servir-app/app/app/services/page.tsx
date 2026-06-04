@@ -64,7 +64,7 @@ export default function ServicesPage() {
       if (editing) {
         await updateService(editing.id, data);
       } else {
-        await createService({ ...data, createdBy: appUser!.uid });
+        await createService({ ...data, createdBy: appUser?.uid ?? "admin" });
       }
       setModalOpen(false);
       load();
