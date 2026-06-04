@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { ConfigTabs } from "@/components/layout/ConfigTabs";
 import { DEFAULT_PERMISSIONS, MODULES, getProfilePermissions, saveProfilePermissions } from "@/lib/permissions";
 import type { AllProfilesPermissions, Funcao, ModuleKey } from "@/lib/types";
 import { Crown, Shield, User, Save, RotateCcw, Eye, Pencil, Check } from "lucide-react";
@@ -83,12 +84,12 @@ export default function PerfisPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Perfis e Permissões</h1>
-          <p className="text-gray-500 text-sm">Configure o que cada perfil pode ver e editar</p>
-        </div>
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Configurações</h1>
+        <p className="text-gray-500 text-sm">Configure o que cada perfil pode ver e editar</p>
       </div>
+
+      <ConfigTabs />
 
       {/* Seletor de perfil */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
