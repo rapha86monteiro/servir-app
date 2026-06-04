@@ -20,33 +20,41 @@ import {
   User,
   Settings,
   UserCheck2,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import { getProfilePermissions, can } from "@/lib/permissions";
+import type { AllProfilesPermissions, ModuleKey } from "@/lib/types";
 
-// minRole: undefined = todos, "leader" = líderes/coordenador, "admin" = só admin/coordenador
-const navItems = [
-  { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, minRole: undefined },
-  { href: "/app/calendario", label: "Calendário", icon: Calendar, minRole: undefined },
-  { href: "/app/schedules", label: "Escalas", icon: ClipboardList, minRole: undefined },
-  { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, minRole: undefined },
-  { href: "/app/members", label: "Membros", icon: UserCheck, minRole: undefined },
-  { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, minRole: "leader" },
-  { href: "/app/historico", label: "Histórico", icon: History, minRole: "leader" },
-  { href: "/app/forms", label: "Formulários", icon: FileText, minRole: "leader" },
-  { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, minRole: "admin" },
-  { href: "/app/teams", label: "Equipes", icon: Users, minRole: "admin" },
-] as const;
+const navItems: { href: string; label: string; icon: any; module: ModuleKey }[] = [
+  { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, module: "dashboard" },
+  { href: "/app/calendario", label: "Calendário", icon: Calendar, module: "calendario" },
+  { href: "/app/schedules", label: "Escalas", icon: ClipboardList, module: "schedules" },
+  { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, module: "substituicoes" },
+  { href: "/app/members", label: "Membros", icon: UserCheck, module: "members" },
+  { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, module: "relatorio" },
+  { href: "/app/historico", label: "Histórico", icon: History, module: "historico" },
+  { href: "/app/forms", label: "Formulários", icon: FileText, module: "forms" },
+  { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, module: "aprovacoes" },
+  { href: "/app/teams", label: "Equipes", icon: Users, module: "teams" },
+  { href: "/app/perfis", label: "Perfis", icon: ShieldCheck, module: "perfis" },
+];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { appUser } = useAuth();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [perms, setPerms] = useState<AllProfilesPermissions | null>(null);
+
+  useEffect(() => {
+    getProfilePermissions().then(setPerms);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -55,15 +63,8 @@ export function Sidebar() {
   };
 
   const role = appUser?.role ?? "member";
-  const funcao = appUser?.funcao;
-  const isCoord = role === "admin" || funcao === "Coordenador";
-  const isLeader = isCoord || funcao === "Líder" || funcao === "Co-líder";
-  const visibleItems = navItems.filter((item) => {
-    if (!item.minRole) return true;
-    if (item.minRole === "leader") return isLeader;
-    if (item.minRole === "admin") return isCoord;
-    return true;
-  });
+  const funcao = appUser?.funcao ?? (role === "admin" ? "Coordenador" : "Voluntário");
+  const visibleItems = navItems.filter((item) => can(perms, funcao, item.module, "view"));
 
   return (
     <>
