@@ -96,7 +96,7 @@ export default function SchedulesPage() {
       serviceTurno: service.turno,
       teamId: newTeamId,
       teamName: team.name,
-      leaderId: appUser!.uid,
+      leaderId: appUser?.uid ?? "admin",
       positions: emptyPositions,
       publicToken: uuidv4(),
       createdAt: new Date().toISOString(),
