@@ -10,6 +10,7 @@ import { Check, X, Phone, Cake, Mail, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { ConfigTabs } from "@/components/layout/ConfigTabs";
 
 const FUNCOES: Funcao[] = ["Coordenador", "Líder", "Co-líder", "Voluntário"];
 const FUNCAO_COLORS: Record<string, string> = {
@@ -170,9 +171,11 @@ export default function AprovacoesPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Aprovações</h1>
+        <h1 className="text-xl font-bold text-gray-900">Configurações</h1>
         <p className="text-gray-500 text-sm">{pending.length} cadastro{pending.length !== 1 ? "s" : ""} pendente{pending.length !== 1 ? "s" : ""}</p>
       </div>
+
+      <ConfigTabs />
 
       {pending.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
