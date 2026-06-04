@@ -30,7 +30,6 @@ const allItems = [
   { href: "/app/historico", label: "Histórico", icon: History, role: "leader" },
   { href: "/app/relatorio-mensal", label: "Relatório Mensal", icon: BarChart3, role: "leader" },
   { href: "/app/forms", label: "Formulários", icon: FileText, role: "leader" },
-  { href: "/app/avisos", label: "Avisos", icon: Megaphone, role: "admin" },
   { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, role: "admin" },
   { href: "/app/teams", label: "Equipes", icon: Users, role: "admin" },
   { href: "/app/perfis", label: "Perfis", icon: ShieldCheck, role: "admin" },
