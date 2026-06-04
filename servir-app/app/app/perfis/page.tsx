@@ -42,7 +42,7 @@ export default function PerfisPage() {
 
   function togglePerm(funcao: Funcao, mod: ModuleKey, action: "view" | "edit") {
     setPerms((prev) => {
-      const cur = prev[funcao][mod];
+      const cur = prev[funcao]?.[mod] ?? { view: false, edit: false };
       const newVal = !cur[action];
       const updated = { ...cur, [action]: newVal };
       // Se desligar view, edit também desliga
@@ -143,7 +143,7 @@ export default function PerfisPage() {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {MODULES.map(({ key, label }) => {
-              const p = perms[activeProfile][key];
+              const p = perms[activeProfile]?.[key] ?? { view: false, edit: false };
               return (
                 <tr key={key} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-800">{label}</td>
