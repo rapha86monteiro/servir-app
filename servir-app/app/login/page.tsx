@@ -3,11 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth";
-import { getUserProfile } from "@/lib/auth";
-import { auth } from "@/lib/firebase";
 import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { ChurchIcon } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,23 +30,29 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0a] p-4">
       <div className="w-full max-w-sm">
+        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4">
-            <ChurchIcon size={32} className="text-white" />
+          <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mb-5 overflow-hidden shadow-2xl">
+            <Image src="/logo.png" alt="Belém Church" width={80} height={80} className="object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Departamento Servir</h1>
-          <p className="text-slate-400 text-sm mt-1">Acesse sua conta de líder</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Belém Church</h1>
+          <p className="text-white/40 text-sm mt-1 tracking-widest font-medium">SERVIR</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-xl space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-2xl space-y-4">
+          <div>
+            <p className="text-gray-900 font-semibold mb-1">Acesse sua conta</p>
+            <p className="text-gray-400 text-xs">Área restrita para líderes e administradores</p>
+          </div>
           <Input
             label="E-mail"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="lider@igreja.com"
+            placeholder="lider@belemchurch.com"
             required
           />
           <Input
@@ -63,9 +66,13 @@ export default function LoginPage() {
           {error && (
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#0a0a0a] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
+          >
             {loading ? "Entrando..." : "Entrar"}
-          </Button>
+          </button>
         </form>
       </div>
     </div>
