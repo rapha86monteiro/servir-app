@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Pencil, Trash2, Phone, Search, LayoutGrid, List, Cake, Crown, Shield, User, Camera, Lock, Check, Bell, BellOff } from "lucide-react";
-import { requestNotificationPermission, isNotificationGranted } from "@/lib/notifications";
+import { Plus, Pencil, Trash2, Phone, Search, LayoutGrid, List, Cake, Crown, Shield, User, Camera, Lock, Check } from "lucide-react";
 
 const FUNCOES: Funcao[] = ["Coordenador", "Líder", "Co-líder", "Voluntário"];
 const FUNCAO_COLORS: Record<Funcao, string> = {
@@ -70,7 +69,7 @@ function compressImage(file: File, maxWidth = 400): Promise<string> {
 const empty = { name: "", email: "", phone: "", teamId: "", funcao: "Voluntário" as Funcao, aniversario: "", active: true };
 
 export default function MembersPage() {
-  const { appUser, firebaseUser } = useAuth();
+  const { appUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [search, setSearch] = useState("");
@@ -91,24 +90,6 @@ export default function MembersPage() {
   const [profMsg, setProfMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [pwdMsg, setPwdMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [notifEnabled, setNotifEnabled] = useState(false);
-  const [notifBusy, setNotifBusy] = useState(false);
-  const [notifMsg, setNotifMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  useEffect(() => {
-    setNotifEnabled(isNotificationGranted());
-  }, [profileOpen]);
-
-  async function handleEnableNotifications() {
-    const uid = firebaseUser?.uid ?? auth.currentUser?.uid ?? appUser?.uid;
-    if (!uid) return;
-    setNotifBusy(true);
-    setNotifMsg(null);
-    const r = await requestNotificationPermission(uid);
-    setNotifMsg({ ok: r.ok, text: r.message });
-    if (r.ok) setNotifEnabled(true);
-    setNotifBusy(false);
-  }
 
   const isAdmin = appUser?.role === "admin" || appUser?.funcao === "Coordenador";
   const isLeader = isAdmin || appUser?.funcao === "Líder" || appUser?.funcao === "Co-líder";
@@ -132,20 +113,18 @@ export default function MembersPage() {
   }
 
   async function loadProfile() {
-    const uid = firebaseUser?.uid ?? auth.currentUser?.uid ?? appUser?.uid;
-    if (!uid) return;
+    const user = auth.currentUser;
+    if (!user) return;
     try {
-      const snap = await getDoc(doc(db, "users", uid));
+      const snap = await getDoc(doc(db, "users", user.uid));
       const data: any = snap.data() ?? {};
       setProfile({
-        name: data.name ?? appUser?.name ?? "",
+        name: data.name ?? "",
         phone: data.phone ?? "",
         aniversario: data.aniversario ?? "",
         photo: data.photo ?? "",
       });
-    } catch (err) {
-      console.error("Erro ao carregar perfil:", err);
-    }
+    } catch {}
   }
 
   function openCreate() {
@@ -191,30 +170,23 @@ export default function MembersPage() {
   }
 
   async function handleSaveProfile() {
-    const fbUid = firebaseUser?.uid;
-    const authUid = auth.currentUser?.uid;
-    const appUid = appUser?.uid;
-    const uid = fbUid ?? authUid ?? appUid;
-    alert(`DEBUG\nfirebaseUser.uid: ${fbUid ?? "VAZIO"}\nauth.currentUser.uid: ${authUid ?? "VAZIO"}\nappUser.uid: ${appUid ?? "VAZIO"}\nuid final: ${uid ?? "VAZIO"}`);
-    if (!uid) {
-      setProfMsg({ type: "error", text: "Usuário não identificado." });
+    const user = auth.currentUser;
+    if (!user) {
+      alert("Você não está logado. Faça login novamente.");
       return;
     }
     setSavingProfile(true);
     setProfMsg(null);
     try {
-      const data: Record<string, string> = {
-        name: String(profile.name ?? ""),
-        phone: String(profile.phone ?? ""),
-        aniversario: String(profile.aniversario ?? ""),
-      };
-      if (profile.photo) data.photo = String(profile.photo);
-
-      await updateDoc(doc(db, "users", uid), data);
+      await updateDoc(doc(db, "users", user.uid), {
+        name: profile.name || "",
+        phone: profile.phone || "",
+        aniversario: profile.aniversario || "",
+        photo: profile.photo || "",
+      });
       setProfMsg({ type: "success", text: "Perfil atualizado!" });
       setTimeout(() => setProfMsg(null), 3000);
     } catch (err: any) {
-      console.error("Erro ao salvar perfil:", err);
       setProfMsg({ type: "error", text: "Erro: " + (err?.message ?? String(err)) });
     }
     setSavingProfile(false);
@@ -479,39 +451,6 @@ export default function MembersPage() {
             <Button onClick={handleSaveProfile} disabled={savingProfile} className="w-full">
               {savingProfile ? "Salvando..." : "Salvar Perfil"}
             </Button>
-          </div>
-
-          {/* Notificações Push */}
-          <div className="pt-4 border-t border-gray-100 space-y-3">
-            <div className="flex items-center gap-2">
-              <Bell size={14} className="text-gray-500" />
-              <p className="font-semibold text-gray-900 text-sm">Notificações</p>
-            </div>
-            <div className={`p-3 rounded-xl border ${notifEnabled ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
-              <div className="flex items-start gap-2">
-                {notifEnabled ? <Bell size={14} className="text-green-600 mt-0.5" /> : <BellOff size={14} className="text-gray-400 mt-0.5" />}
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${notifEnabled ? "text-green-700" : "text-gray-700"}`}>
-                    {notifEnabled ? "Notificações ativas" : "Notificações desativadas"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {notifEnabled
-                      ? "Você receberá alertas de escalas, substituições e avisos."
-                      : "Ative para receber alertas no seu celular."}
-                  </p>
-                </div>
-              </div>
-            </div>
-            {notifMsg && (
-              <div className={`text-sm p-2 rounded-lg ${notifMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                {notifMsg.text}
-              </div>
-            )}
-            {!notifEnabled && (
-              <Button onClick={handleEnableNotifications} disabled={notifBusy} variant="secondary" className="w-full">
-                <Bell size={14} /> {notifBusy ? "Ativando..." : "Ativar notificações"}
-              </Button>
-            )}
           </div>
 
           <div className="pt-4 border-t border-gray-100 space-y-3">
