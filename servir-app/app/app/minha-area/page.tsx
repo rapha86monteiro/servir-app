@@ -15,8 +15,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
   Award, CheckCircle2, XCircle, MapPin, TrendingUp, Calendar,
-  CalendarX, Plus, Trash2, Bell, BellOff, Camera, Lock, Check, Info, User,
+  CalendarX, Plus, Trash2, Bell, BellOff, Camera, Lock, Check, Info, User, HelpCircle,
 } from "lucide-react";
+import { abrirTutorial } from "@/components/WelcomeTutorial";
 
 type Tab = "jornada" | "disponibilidade" | "notificacoes" | "dados";
 
@@ -393,6 +394,10 @@ export default function MinhaAreaPage() {
                 {pwdMsg && <div className={`text-sm p-2 rounded-lg flex items-center gap-2 ${pwdMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{pwdMsg.ok && <Check size={12} />}{pwdMsg.text}</div>}
                 <Button variant="secondary" onClick={changePwd} disabled={savingPwd || !pwd.current || !pwd.new} className="w-full">{savingPwd ? "Alterando..." : "Alterar senha"}</Button>
               </div>
+
+              <button onClick={abrirTutorial} className="w-full flex items-center justify-center gap-2 py-3 text-sm text-gray-500 hover:text-gray-700">
+                <HelpCircle size={15} /> Ver tutorial do app
+              </button>
             </div>
           )}
         </>
