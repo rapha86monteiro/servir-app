@@ -185,19 +185,26 @@ export default function MembersPage() {
   }
 
   async function handleSaveProfile() {
-    if (!appUser) return;
+    if (!appUser?.uid) {
+      setProfMsg({ type: "error", text: "Usuário não identificado. Tente sair e entrar de novo." });
+      return;
+    }
     setSavingProfile(true);
     setProfMsg(null);
     try {
-      await updateDoc(doc(db, "users", appUser.uid), {
-        name: profile.name ?? "",
-        phone: profile.phone ?? "",
-        aniversario: profile.aniversario ?? "",
-        photo: profile.photo ?? "",
-      });
+      const data: Record<string, string> = {
+        name: String(profile.name ?? ""),
+        phone: String(profile.phone ?? ""),
+        aniversario: String(profile.aniversario ?? ""),
+      };
+      // Photo só envia se houver
+      if (profile.photo) data.photo = String(profile.photo);
+
+      await updateDoc(doc(db, "users", appUser.uid), data);
       setProfMsg({ type: "success", text: "Perfil atualizado!" });
       setTimeout(() => setProfMsg(null), 3000);
     } catch (err: any) {
+      console.error("Erro ao salvar perfil:", err);
       setProfMsg({ type: "error", text: "Erro: " + (err?.message ?? String(err)) });
     }
     setSavingProfile(false);
