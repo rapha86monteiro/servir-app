@@ -36,5 +36,7 @@ export async function createUser(
 
 export async function getUserProfile(uid: string): Promise<AppUser | null> {
   const snap = await getDoc(doc(db, "users", uid));
-  return snap.exists() ? (snap.data() as AppUser) : null;
+  if (!snap.exists()) return null;
+  // Sempre garante que uid esteja preenchido (alguns documentos antigos não têm)
+  return { ...(snap.data() as AppUser), uid: snap.id };
 }
