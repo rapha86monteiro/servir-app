@@ -2,13 +2,30 @@ import * as admin from "firebase-admin";
 
 let initialized = false;
 
+function getPrivateKey(): string {
+  // Tenta primeiro o base64 (mais seguro)
+  const b64 = process.env.FIREBASE_ADMIN_PRIVATE_KEY_B64;
+  if (b64) {
+    return Buffer.from(b64, "base64").toString("utf-8");
+  }
+  // Fallback para a chave normal
+  let key = process.env.FIREBASE_ADMIN_PRIVATE_KEY ?? "";
+  // Remove aspas externas se houver
+  if (key.startsWith('"') && key.endsWith('"')) {
+    key = key.slice(1, -1);
+  }
+  // Converte \n literais em quebras de linha reais
+  key = key.replace(/\\n/g, "\n");
+  return key;
+}
+
 export function getAdminApp() {
   if (!initialized && !admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+        privateKey: getPrivateKey(),
       }),
     });
     initialized = true;
