@@ -344,41 +344,6 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* Aniversariantes do mês */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Cake size={16} className="text-pink-400" />
-          <p className="font-bold text-gray-900 text-sm">Aniversariantes de {MONTH_NAMES[currentMonth - 1]}</p>
-          <span className="text-xs text-gray-400">({aniversariantes.length})</span>
-        </div>
-        {aniversariantes.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">Nenhum aniversariante este mês</p>
-        ) : (
-          <div className="space-y-1">
-            {aniversariantes.map((m) => {
-              const md = getMonthDayFromAniversario(m.aniversario)!;
-              const team = teams.find((t) => t.id === m.teamId);
-              const isToday = md.day === now.getDate();
-              const isPast = md.day < now.getDate();
-              return (
-                <div key={m.id} className={`flex items-center gap-3 py-1.5 ${isToday ? "bg-pink-50 -mx-2 px-2 rounded-lg" : ""}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                    isToday ? "bg-pink-200 text-pink-700" : isPast ? "bg-gray-100 text-gray-400" : "bg-pink-50 text-pink-500"
-                  }`}>
-                    {String(md.day).padStart(2, "0")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${isToday ? "text-pink-700 font-bold" : isPast ? "text-gray-400" : "text-gray-800"}`}>
-                      {m.name} {isToday && "🎉"}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">{team?.name}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
