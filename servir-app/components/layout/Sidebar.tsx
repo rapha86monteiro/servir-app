@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Calendar, ClipboardList, RefreshCw, UserCheck,
   Bell, ClipboardCheck, History, FileText, Megaphone, UserCheck2,
   Users, ShieldCheck, LogOut, MoreHorizontal, X, BarChart3, CalendarX, Award, Image as ImageIcon,
-  Moon, Sun,
+  Moon, Sun, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,9 +25,7 @@ const allItems = [
   { href: "/app/minha-area", label: "Minha Área", icon: Award, role: "all" },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, role: "leader" },
   { href: "/app/forms", label: "Formulários", icon: FileText, role: "leader" },
-  { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, role: "admin" },
-  { href: "/app/teams", label: "Equipes", icon: Users, role: "admin" },
-  { href: "/app/perfis", label: "Perfis", icon: ShieldCheck, role: "admin" },
+  { href: "/app/teams", label: "Configurações", icon: Settings, role: "admin" },
 ];
 
 export function Sidebar() {
