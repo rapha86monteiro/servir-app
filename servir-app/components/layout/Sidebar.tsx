@@ -1,52 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import Image from "next/image";
 import {
-  LayoutDashboard,
-  Users,
-  UserCheck,
-  CalendarDays,
-  ClipboardList,
-  FileText,
-  LogOut,
-  ClipboardCheck,
-  History,
-  Calendar,
-  UserCog,
-  MoreHorizontal,
-  X,
-  RefreshCw,
-  User,
-  Settings,
-  UserCheck2,
-  ShieldCheck,
-  Megaphone,
-  Bell,
+  LayoutDashboard, Calendar, ClipboardList, RefreshCw, UserCheck,
+  Bell, ClipboardCheck, History, FileText, Megaphone, UserCheck2,
+  Users, ShieldCheck, LogOut, MoreHorizontal, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "@/lib/auth";
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { getProfilePermissions, can } from "@/lib/permissions";
-import type { AllProfilesPermissions, ModuleKey } from "@/lib/types";
 
-const navItems: { href: string; label: string; icon: any; module: ModuleKey }[] = [
-  { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, module: "dashboard" },
-  { href: "/app/calendario", label: "Calendário", icon: Calendar, module: "calendario" },
-  { href: "/app/schedules", label: "Escalas", icon: ClipboardList, module: "schedules" },
-  { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, module: "substituicoes" },
-  { href: "/app/members", label: "Membros", icon: UserCheck, module: "members" },
-  { href: "/app/notificacoes", label: "Notificações", icon: Bell, module: "dashboard" },
-  { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, module: "relatorio" },
-  { href: "/app/historico", label: "Histórico", icon: History, module: "historico" },
-  { href: "/app/forms", label: "Formulários", icon: FileText, module: "forms" },
-  { href: "/app/avisos", label: "Avisos", icon: Megaphone, module: "avisos" },
-  { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, module: "aprovacoes" },
-  { href: "/app/teams", label: "Equipes", icon: Users, module: "teams" },
-  { href: "/app/perfis", label: "Perfis", icon: ShieldCheck, module: "perfis" },
+const allItems = [
+  { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, role: "all" },
+  { href: "/app/calendario", label: "Calendário", icon: Calendar, role: "all" },
+  { href: "/app/schedules", label: "Escalas", icon: ClipboardList, role: "all" },
+  { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, role: "all" },
+  { href: "/app/members", label: "Membros", icon: UserCheck, role: "all" },
+  { href: "/app/notificacoes", label: "Notificações", icon: Bell, role: "all" },
+  { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, role: "leader" },
+  { href: "/app/historico", label: "Histórico", icon: History, role: "leader" },
+  { href: "/app/forms", label: "Formulários", icon: FileText, role: "leader" },
+  { href: "/app/avisos", label: "Avisos", icon: Megaphone, role: "admin" },
+  { href: "/app/aprovacoes", label: "Aprovações", icon: UserCheck2, role: "admin" },
+  { href: "/app/teams", label: "Equipes", icon: Users, role: "admin" },
+  { href: "/app/perfis", label: "Perfis", icon: ShieldCheck, role: "admin" },
 ];
 
 export function Sidebar() {
@@ -54,11 +34,6 @@ export function Sidebar() {
   const { appUser } = useAuth();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [perms, setPerms] = useState<AllProfilesPermissions | null>(null);
-
-  useEffect(() => {
-    getProfilePermissions().then(setPerms);
-  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -67,8 +42,16 @@ export function Sidebar() {
   };
 
   const role = appUser?.role ?? "member";
-  const funcao = appUser?.funcao ?? (role === "admin" ? "Coordenador" : "Voluntário");
-  const visibleItems = navItems.filter((item) => can(perms, funcao, item.module, "view"));
+  const funcao = appUser?.funcao;
+  const isCoord = role === "admin" || funcao === "Coordenador";
+  const isLeader = isCoord || funcao === "Líder" || funcao === "Co-líder";
+
+  const visibleItems = allItems.filter((item) => {
+    if (item.role === "all") return true;
+    if (item.role === "leader") return isLeader;
+    if (item.role === "admin") return isCoord;
+    return false;
+  });
 
   return (
     <>
@@ -106,7 +89,7 @@ export function Sidebar() {
           <div className="px-3 py-2 mb-2">
             <p className="text-xs text-white/30">Logado como</p>
             <p className="text-sm font-medium text-white truncate">{appUser?.name}</p>
-            <span className="text-xs text-white/40">{appUser?.role === "admin" ? "Administrador" : "Líder"}</span>
+            <span className="text-xs text-white/40">{isCoord ? "Coordenador" : isLeader ? "Líder" : "Voluntário"}</span>
           </div>
           <button
             onClick={handleSignOut}
@@ -146,9 +129,9 @@ export function Sidebar() {
         </button>
       </nav>
 
-      {/* Menu "Mais" expandido */}
+      {/* Menu Mais expandido */}
       {moreOpen && (
-        <div className="md:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg">
+        <div className="md:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg max-h-[60vh] overflow-y-auto">
           <div className="grid grid-cols-3 gap-0">
             {visibleItems.slice(4).map(({ href, label, icon: Icon }) => (
               <Link
