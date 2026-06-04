@@ -5,6 +5,7 @@ import { getServices, createService, updateService, deleteService } from "@/lib/
 import { getTeams } from "@/lib/firestore/teams";
 import { getMembers } from "@/lib/firestore/members";
 import { getTeamColor } from "@/lib/teamColors";
+import { generateCalendarImage } from "@/lib/calendarImage";
 import type { Service, Team, Member, Turno } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
@@ -128,65 +129,28 @@ export default function CalendarioPage() {
   }
 
   async function shareWhatsApp() {
-    if (!gridRef.current) return;
     setExporting(true);
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const source = gridRef.current;
+      const blob = await generateCalendarImage(monthServices, uniqueDates, teams, members, month, year);
+      const file = new File([blob], `calendario-${MONTH_NAMES[month]}-${year}.png`, { type: "image/png" });
 
-      // Cria clone off-screen com largura fixa para evitar corte
-      const clone = source.cloneNode(true) as HTMLElement;
-      clone.style.position = "absolute";
-      clone.style.left = "-99999px";
-      clone.style.top = "0";
-      clone.style.width = "1400px";
-      clone.style.maxWidth = "none";
-      clone.style.padding = "32px";
-      clone.style.backgroundColor = "#ffffff";
-      document.body.appendChild(clone);
-
-      // Aguarda renderização
-      await new Promise((r) => setTimeout(r, 200));
-
-      const canvas = await html2canvas(clone, {
-        backgroundColor: "#ffffff",
-        scale: 3, // alta resolução
-        useCORS: true,
-        logging: false,
-        width: clone.scrollWidth,
-        height: clone.scrollHeight,
-        windowWidth: clone.scrollWidth,
-        windowHeight: clone.scrollHeight,
-      });
-
-      document.body.removeChild(clone);
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) { setExporting(false); return; }
-        const file = new File([blob], `calendario-${MONTH_NAMES[month]}-${year}.png`, { type: "image/png" });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: `Calendário ${MONTH_NAMES[month]} ${year}`,
-            });
-          } catch {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url; a.download = file.name; a.click();
-          }
-        } else {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: `Calendário ${MONTH_NAMES[month]} ${year}` });
+        } catch {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url; a.download = file.name; a.click();
         }
-        setExporting(false);
-      }, "image/png", 1.0);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = file.name; a.click();
+      }
     } catch (err) {
-      alert("Erro: " + String(err));
-      setExporting(false);
+      alert("Erro ao gerar imagem: " + String(err));
     }
+    setExporting(false);
   }
 
   const monthServices = services.filter((s) => {
@@ -294,7 +258,9 @@ export default function CalendarioPage() {
                         ) : (
                           <div className="space-y-1">
                             {svcs.map((s) => {
-                              const color = getTeamColor(s.teamName);
+                              const team = teams.find((t) => t.name === s.teamName);
+                              const colorHex = team?.color ?? getTeamColor(s.teamName).bg;
+                              const color = { bg: colorHex, text: "#ffffff" };
                               return (
                                 <div key={s.id}>
                                   <button
@@ -335,7 +301,8 @@ export default function CalendarioPage() {
                 {aniversariantes.map((m) => {
                   const day = parseInt(m.aniversario.split("-")[2]);
                   const team = teams.find((t) => t.id === m.teamId);
-                  const color = getTeamColor(team?.name ?? "");
+                  const colorHex = team?.color ?? getTeamColor(team?.name ?? "").bg;
+                  const color = { bg: colorHex };
                   return (
                     <div key={m.id} className="flex items-center gap-2 py-1 border-b border-amber-100/50 last:border-0">
                       <span className="text-pink-500 text-xs">📍</span>
