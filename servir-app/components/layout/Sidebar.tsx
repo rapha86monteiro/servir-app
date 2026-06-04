@@ -10,7 +10,6 @@ import {
   ClipboardList,
   FileText,
   LogOut,
-  ChurchIcon,
   ClipboardCheck,
   History,
   Calendar,
@@ -23,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 
 const navItems = [
   { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, adminOnly: false },
@@ -56,18 +56,18 @@ export function Sidebar() {
   return (
     <>
       {/* Sidebar desktop */}
-      <aside className="hidden md:flex w-64 bg-slate-900 text-white flex-col h-screen sticky top-0">
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-700">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <ChurchIcon size={18} />
+      <aside className="hidden md:flex w-64 bg-[#0a0a0a] text-white flex-col h-screen sticky top-0">
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
+          <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+            <Image src="/logo.png" alt="Belém Church" width={36} height={36} className="object-contain" />
           </div>
           <div>
-            <p className="font-bold text-sm">Departamento</p>
-            <p className="text-blue-400 text-xs font-semibold">SERVIR</p>
+            <p className="font-bold text-sm text-white">Belém Church</p>
+            <p className="text-white/40 text-xs font-semibold tracking-widest">SERVIR</p>
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {visibleItems.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
@@ -75,27 +75,27 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 pathname.startsWith(href)
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-white text-black"
+                  : "text-white/60 hover:bg-white/10 hover:text-white"
               )}
             >
-              <Icon size={18} />
+              <Icon size={17} />
               {label}
             </Link>
           ))}
         </nav>
 
-        <div className="px-3 py-4 border-t border-slate-700">
+        <div className="px-3 py-4 border-t border-white/10">
           <div className="px-3 py-2 mb-2">
-            <p className="text-xs text-slate-400">Logado como</p>
+            <p className="text-xs text-white/30">Logado como</p>
             <p className="text-sm font-medium text-white truncate">{appUser?.name}</p>
-            <span className="text-xs text-blue-400">{appUser?.role === "admin" ? "Administrador" : "Líder"}</span>
+            <span className="text-xs text-white/40">{appUser?.role === "admin" ? "Administrador" : "Líder"}</span>
           </div>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:bg-white/10 hover:text-white transition-colors"
           >
-            <LogOut size={18} />
+            <LogOut size={17} />
             Sair
           </button>
         </div>
@@ -110,7 +110,7 @@ export function Sidebar() {
             onClick={() => setMoreOpen(false)}
             className={cn(
               "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors",
-              pathname.startsWith(href) ? "text-blue-600" : "text-gray-400"
+              pathname.startsWith(href) ? "text-black" : "text-gray-400"
             )}
           >
             <Icon size={20} />
@@ -121,7 +121,7 @@ export function Sidebar() {
           onClick={() => setMoreOpen(!moreOpen)}
           className={cn(
             "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors",
-            moreOpen ? "text-blue-600" : "text-gray-400"
+            moreOpen ? "text-black" : "text-gray-400"
           )}
         >
           {moreOpen ? <X size={20} /> : <MoreHorizontal size={20} />}
@@ -129,7 +129,7 @@ export function Sidebar() {
         </button>
       </nav>
 
-      {/* Menu "Mais" expandido no mobile */}
+      {/* Menu "Mais" expandido */}
       {moreOpen && (
         <div className="md:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg">
           <div className="grid grid-cols-3 gap-0">
@@ -140,7 +140,7 @@ export function Sidebar() {
                 onClick={() => setMoreOpen(false)}
                 className={cn(
                   "flex flex-col items-center gap-1 py-4 text-xs font-medium border-b border-gray-100 transition-colors",
-                  pathname.startsWith(href) ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:bg-gray-50"
+                  pathname.startsWith(href) ? "text-black bg-gray-50" : "text-gray-600 hover:bg-gray-50"
                 )}
               >
                 <Icon size={22} />
