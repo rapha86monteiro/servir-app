@@ -110,3 +110,24 @@ export interface FormResponse {
   answers: Record<string, string | boolean>;
   submittedAt: string;
 }
+
+export type Avaliacao = "Ótimo" | "Bom" | "Regular" | "Precisa melhorar";
+
+export interface Relatorio {
+  id: string;
+  serviceId: string;
+  serviceTitle: string;
+  serviceDate: string;
+  teamId: string;
+  teamName: string;
+  liderId: string;
+  liderName: string;
+  presentes: number;
+  ausentes: number;
+  substitutos: number;
+  avaliacao: Avaliacao;
+  observacoes: string;
+  ocorrencias: string;
+  fotos: string[];
+  createdAt: string;
+}
