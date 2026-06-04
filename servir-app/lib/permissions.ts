@@ -14,6 +14,7 @@ export const MODULES: { key: ModuleKey; label: string }[] = [
   { key: "teams", label: "Equipes" },
   { key: "aprovacoes", label: "Aprovações" },
   { key: "perfis", label: "Perfis" },
+  { key: "avisos", label: "Avisos" },
 ];
 
 const ALL_TRUE: ProfilePermissions = {
@@ -28,13 +29,14 @@ const ALL_TRUE: ProfilePermissions = {
   teams: { view: true, edit: true },
   aprovacoes: { view: true, edit: true },
   perfis: { view: true, edit: true },
+  avisos: { view: true, edit: true },
 };
 
 const VIEW_ONLY: ProfilePermissions = {
   dashboard: { view: true, edit: false },
   calendario: { view: true, edit: false },
   schedules: { view: true, edit: false },
-  substituicoes: { view: true, edit: true }, // pode aceitar
+  substituicoes: { view: true, edit: true },
   members: { view: true, edit: false },
   relatorio: { view: false, edit: false },
   historico: { view: false, edit: false },
@@ -42,6 +44,7 @@ const VIEW_ONLY: ProfilePermissions = {
   teams: { view: false, edit: false },
   aprovacoes: { view: false, edit: false },
   perfis: { view: false, edit: false },
+  avisos: { view: false, edit: false },
 };
 
 export const DEFAULT_PERMISSIONS: AllProfilesPermissions = {
@@ -51,6 +54,7 @@ export const DEFAULT_PERMISSIONS: AllProfilesPermissions = {
     teams: { view: true, edit: false },
     aprovacoes: { view: false, edit: false },
     perfis: { view: false, edit: false },
+    avisos: { view: false, edit: false },
   },
   "Co-líder": {
     dashboard: { view: true, edit: false },
@@ -64,6 +68,7 @@ export const DEFAULT_PERMISSIONS: AllProfilesPermissions = {
     teams: { view: false, edit: false },
     aprovacoes: { view: false, edit: false },
     perfis: { view: false, edit: false },
+    avisos: { view: false, edit: false },
   },
   Voluntário: VIEW_ONLY,
 };

@@ -28,7 +28,8 @@ export interface Team {
 
 export type ModuleKey =
   | "dashboard" | "calendario" | "schedules" | "substituicoes" | "members"
-  | "relatorio" | "historico" | "forms" | "teams" | "aprovacoes" | "perfis";
+  | "relatorio" | "historico" | "forms" | "teams" | "aprovacoes" | "perfis"
+  | "avisos";
 
 export interface ModulePerm {
   view: boolean;
