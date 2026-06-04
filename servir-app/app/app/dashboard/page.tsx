@@ -6,9 +6,10 @@ import { getServices } from "@/lib/firestore/services";
 import { getTeams } from "@/lib/firestore/teams";
 import { getMembers } from "@/lib/firestore/members";
 import { getSubstituicoesAbertas } from "@/lib/firestore/substituicoes";
+import { getAvisos, type Aviso } from "@/lib/firestore/avisos";
 import type { Service, Team, Member, Substituicao } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { Cake, ChevronRight, ChevronLeft, RefreshCw, Calendar, MessageSquare } from "lucide-react";
+import { Cake, ChevronRight, ChevronLeft, RefreshCw, Calendar, MessageSquare, Megaphone, Pin } from "lucide-react";
 import Link from "next/link";
 
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -62,6 +63,7 @@ export default function DashboardPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [substituicoes, setSubstituicoes] = useState<Substituicao[]>([]);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -82,10 +84,12 @@ export default function DashboardPage() {
         const allTeams = await getTeams().catch(() => []);
         const allMembers = await getMembers().catch(() => []);
         const subs = await getSubstituicoesAbertas().catch(() => []);
+        const avs = await getAvisos().catch(() => []);
         setServices(svcs);
         setTeams(allTeams);
         setMembers(allMembers);
         setSubstituicoes(subs);
+        setAvisos(avs);
       } catch (err) {
         console.error("Erro ao carregar dashboard:", err);
       }
@@ -151,6 +155,34 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-gray-900">Olá, {appUser?.name?.split(" ")[0]} 👋</h1>
         <p className="text-gray-400 text-sm">Departamento Servir · Belém Church</p>
       </div>
+
+      {/* Mural de avisos */}
+      {avisos.length > 0 && (
+        <div className="space-y-2">
+          {avisos.filter((a) => a.fixado).slice(0, 3).map((a) => (
+            <div key={a.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Pin size={14} className="text-amber-500" />
+                <p className="font-bold text-amber-800 text-sm">{a.titulo}</p>
+              </div>
+              <p className="text-sm text-amber-700 whitespace-pre-wrap">{a.mensagem}</p>
+              <p className="text-xs text-amber-500 mt-2">{a.autor}</p>
+            </div>
+          ))}
+          {avisos.filter((a) => a.fixado).length === 0 && avisos[0] && (
+            <Link href="/app/mural">
+              <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4 flex items-center gap-3">
+                <Megaphone size={18} className="text-amber-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 text-sm truncate">{avisos[0].titulo}</p>
+                  <p className="text-xs text-gray-400 truncate">{avisos[0].mensagem}</p>
+                </div>
+                <ChevronRight size={15} className="text-gray-300 flex-shrink-0" />
+              </div>
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Alerta de aniversariantes do dia */}
       {todayBirthdays.length > 0 && (
@@ -336,6 +368,18 @@ export default function DashboardPage() {
                         </p>
                         <p className="text-xs text-gray-500 truncate">{team?.name}</p>
                       </div>
+                      {m.phone && (
+                        <button
+                          onClick={() => {
+                            const primeiroNome = m.name.split(" ")[0];
+                            const msg = `🎉 Feliz aniversário, ${primeiroNome}! Que Deus abençoe muito a sua vida. Toda a equipe Servir da Belém Church te deseja um dia especial! 🎂🙏`;
+                            window.open(`https://wa.me/55${m.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+                          }}
+                          className="flex-shrink-0 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
+                        >
+                          🎂 Parabenizar
+                        </button>
+                      )}
                     </div>
                   );
                 })}
