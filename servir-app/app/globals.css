@@ -1,3 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== MODO ESCURO ===== */
+/* Aplica somente dentro da área autenticada marcada com .dark-area */
+.dark-area.dark {
+  background-color: #0f0f0f;
+}
+
+.dark-area.dark,
+.dark-area.dark .min-h-screen {
+  color: #e5e7eb;
+}
+
+/* Fundos */
+.dark-area.dark .bg-white { background-color: #1c1c1e !important; }
+.dark-area.dark .bg-gray-50 { background-color: #161618 !important; }
+.dark-area.dark .bg-gray-100 { background-color: #2a2a2d !important; }
+
+/* Textos */
+.dark-area.dark .text-gray-900 { color: #f3f4f6 !important; }
+.dark-area.dark .text-gray-800 { color: #e5e7eb !important; }
+.dark-area.dark .text-gray-700 { color: #d1d5db !important; }
+.dark-area.dark .text-gray-600 { color: #b0b4ba !important; }
+.dark-area.dark .text-gray-500 { color: #9ca3af !important; }
+
+/* Bordas */
+.dark-area.dark .border-gray-100 { border-color: #2a2a2d !important; }
+.dark-area.dark .border-gray-200 { border-color: #333338 !important; }
+.dark-area.dark .divide-gray-50 > * { border-color: #232326 !important; }
+.dark-area.dark .divide-gray-100 > * { border-color: #2a2a2d !important; }
+
+/* Inputs e selects */
+.dark-area.dark input,
+.dark-area.dark select,
+.dark-area.dark textarea {
+  background-color: #232326 !important;
+  border-color: #333338 !important;
+  color: #f3f4f6 !important;
+}
+.dark-area.dark input::placeholder,
+.dark-area.dark textarea::placeholder { color: #6b7280 !important; }
+
+/* Hover states */
+.dark-area.dark .hover\:bg-gray-50:hover { background-color: #232326 !important; }
+.dark-area.dark .hover\:bg-gray-100:hover { background-color: #2a2a2d !important; }
+
+/* Mantém o card preto do dashboard ainda mais escuro */
+.dark-area.dark .bg-\[\#0a0a0a\] { background-color: #000000 !important; }
+
+/* Sombras mais sutis no escuro */
+.dark-area.dark .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.4) !important; }
