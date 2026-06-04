@@ -20,7 +20,18 @@ export async function requestNotificationPermission(uid: string): Promise<{ ok: 
       return { ok: false, message: "Permissão negada para notificações." };
     }
 
-    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    // Registra o service worker
+    let registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+    if (!registration) {
+      registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+    }
+
+    // Aguarda o service worker ficar ativo
+    await navigator.serviceWorker.ready;
+
+    // Pequena espera adicional para garantir
+    await new Promise((r) => setTimeout(r, 500));
+
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
