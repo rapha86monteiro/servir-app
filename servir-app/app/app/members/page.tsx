@@ -191,10 +191,13 @@ export default function MembersPage() {
   }
 
   async function handleSaveProfile() {
-    const uid = firebaseUser?.uid ?? auth.currentUser?.uid ?? appUser?.uid;
-    console.log("[DEBUG] save profile uid:", uid, { firebaseUser: firebaseUser?.uid, authCurrent: auth.currentUser?.uid, appUserUid: appUser?.uid });
+    const fbUid = firebaseUser?.uid;
+    const authUid = auth.currentUser?.uid;
+    const appUid = appUser?.uid;
+    const uid = fbUid ?? authUid ?? appUid;
+    alert(`DEBUG\nfirebaseUser.uid: ${fbUid ?? "VAZIO"}\nauth.currentUser.uid: ${authUid ?? "VAZIO"}\nappUser.uid: ${appUid ?? "VAZIO"}\nuid final: ${uid ?? "VAZIO"}`);
     if (!uid) {
-      setProfMsg({ type: "error", text: "Usuário não identificado. Recarregue a página." });
+      setProfMsg({ type: "error", text: "Usuário não identificado." });
       return;
     }
     setSavingProfile(true);
