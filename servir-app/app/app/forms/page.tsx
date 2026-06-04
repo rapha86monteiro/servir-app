@@ -70,7 +70,7 @@ export default function FormsPage() {
       teamId,
       teamName: team.name,
       fields,
-      createdBy: appUser!.uid,
+      createdBy: appUser?.uid ?? "admin",
       createdAt: new Date().toISOString(),
     });
     setModalOpen(false);
