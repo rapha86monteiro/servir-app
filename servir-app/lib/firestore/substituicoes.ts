@@ -8,21 +8,23 @@ import type { Substituicao } from "../types";
 const col = () => collection(db, "substituicoes");
 
 export async function getSubstituicoes(): Promise<Substituicao[]> {
-  const q = query(col(), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Substituicao));
+  const snap = await getDocs(col());
+  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Substituicao));
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getSubstituicoesAbertas(): Promise<Substituicao[]> {
-  const q = query(col(), where("status", "==", "aberta"), orderBy("createdAt", "desc"));
+  const q = query(col(), where("status", "==", "aberta"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Substituicao));
+  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Substituicao));
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getSubstituicoesByTeam(teamId: string): Promise<Substituicao[]> {
-  const q = query(col(), where("teamId", "==", teamId), orderBy("createdAt", "desc"));
+  const q = query(col(), where("teamId", "==", teamId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Substituicao));
+  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Substituicao));
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function createSubstituicao(data: Omit<Substituicao, "id">): Promise<Substituicao> {
