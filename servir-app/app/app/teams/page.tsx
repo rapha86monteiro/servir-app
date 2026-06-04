@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ConfigTabs } from "@/components/layout/ConfigTabs";
 import { getTeams, createTeam, updateTeam, deleteTeam } from "@/lib/firestore/teams";
 import { getTeamColor } from "@/lib/teamColors";
 import type { Team } from "@/lib/types";
@@ -84,11 +85,15 @@ export default function TeamsPage() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Configurações</h1>
+        <p className="text-gray-500 text-sm">Equipes, aprovações e permissões</p>
+      </div>
+
+      <ConfigTabs />
+
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Equipes</h1>
-          <p className="text-gray-500 text-sm">{teams.length} equipes cadastradas</p>
-        </div>
+        <p className="text-sm font-semibold text-gray-700">{teams.length} equipes cadastradas</p>
         <Button onClick={openCreate} size="sm"><Plus size={15} /> Nova</Button>
       </div>
 
