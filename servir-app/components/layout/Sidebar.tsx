@@ -11,6 +11,7 @@ import {
   FileText,
   LogOut,
   ChurchIcon,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/app/members", label: "Membros", icon: UserCheck, adminOnly: false },
   { href: "/app/services", label: "Cultos", icon: CalendarDays, adminOnly: true },
   { href: "/app/schedules", label: "Escalas", icon: ClipboardList, adminOnly: false },
+  { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, adminOnly: false },
   { href: "/app/forms", label: "Formulários", icon: FileText, adminOnly: false },
 ];
 
