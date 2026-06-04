@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ReportTabs } from "@/components/layout/ReportTabs";
 import { getRelatorios } from "@/lib/firestore/relatorios";
 import { formatDate } from "@/lib/utils";
 import { ImageIcon, X } from "lucide-react";
@@ -35,9 +36,11 @@ export default function GaleriaPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Galeria</h1>
+        <h1 className="text-xl font-bold text-gray-900">Relatórios</h1>
         <p className="text-gray-500 text-sm">{fotos.length} foto{fotos.length !== 1 ? "s" : ""} dos cultos</p>
       </div>
+
+      <ReportTabs />
 
       {loading ? (
         <div className="flex justify-center py-20">
