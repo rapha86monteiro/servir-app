@@ -4,31 +4,15 @@ import { useEffect, useState, useRef } from "react";
 import { getServices, createService, updateService, deleteService } from "@/lib/firestore/services";
 import { getTeams } from "@/lib/firestore/teams";
 import { getMembers } from "@/lib/firestore/members";
+import { getTeamColor } from "@/lib/teamColors";
 import type { Service, Team, Member, Turno } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Share2, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Share2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const TURNOS_ALL: Turno[] = ["Manhã", "Tarde", "Noite", "Especial"];
-
-// Cores para cada equipe (rotativas)
-const TEAM_COLORS = [
-  { bg: "bg-emerald-500", text: "text-white" },
-  { bg: "bg-blue-500", text: "text-white" },
-  { bg: "bg-orange-500", text: "text-white" },
-  { bg: "bg-purple-500", text: "text-white" },
-  { bg: "bg-red-500", text: "text-white" },
-  { bg: "bg-yellow-500", text: "text-white" },
-  { bg: "bg-pink-500", text: "text-white" },
-  { bg: "bg-teal-500", text: "text-white" },
-  { bg: "bg-indigo-500", text: "text-white" },
-  { bg: "bg-cyan-500", text: "text-white" },
-  { bg: "bg-rose-500", text: "text-white" },
-  { bg: "bg-amber-700", text: "text-white" },
-];
-
 const WEEK_DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -90,16 +74,8 @@ export default function CalendarioPage() {
     setLoading(false);
   }
 
-  function prevMonth() {
-    if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1);
-  }
-  function nextMonth() {
-    if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1);
-  }
-  function goToday() {
-    setMonth(now.getMonth());
-    setYear(now.getFullYear());
-  }
+  function prevMonth() { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }
+  function nextMonth() { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }
 
   function openCreate(presetDate?: string, presetTurno?: Turno) {
     setEditing(null);
@@ -132,17 +108,10 @@ export default function CalendarioPage() {
   }
 
   async function handleSave() {
-    if (!form.date || !form.teamId) {
-      alert("Selecione a data e a equipe.");
-      return;
-    }
+    if (!form.date || !form.teamId) { alert("Selecione data e equipe."); return; }
     try {
       const team = teams.find((t) => t.id === form.teamId);
-      const data = {
-        ...form,
-        teamName: team?.name ?? "",
-        title: `Culto ${form.turno}`,
-      };
+      const data = { ...form, teamName: team?.name ?? "", title: `Culto ${form.turno}` };
       if (editing) await updateService(editing.id, data);
       else await createService({ ...data, createdBy: appUser?.uid ?? "admin" });
       setModalOpen(false);
@@ -158,78 +127,48 @@ export default function CalendarioPage() {
     load();
   }
 
-  async function exportImage() {
-    if (!gridRef.current) return;
-    setExporting(true);
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(gridRef.current, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-      });
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `calendario-${MONTH_NAMES[month]}-${year}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, "image/png");
-    } catch (err) {
-      alert("Erro ao exportar: " + String(err));
-    }
-    setExporting(false);
-  }
-
   async function shareWhatsApp() {
     if (!gridRef.current) return;
     setExporting(true);
     try {
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(gridRef.current, {
+      const node = gridRef.current;
+      const canvas = await html2canvas(node, {
         backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
+        width: node.scrollWidth,
+        height: node.scrollHeight,
+        windowWidth: node.scrollWidth,
+        windowHeight: node.scrollHeight,
       });
+
       canvas.toBlob(async (blob) => {
         if (!blob) return;
-        const file = new File([blob], `calendario-${MONTH_NAMES[month]}.png`, { type: "image/png" });
+        const file = new File([blob], `calendario-${MONTH_NAMES[month]}-${year}.png`, { type: "image/png" });
 
-        // Tenta usar Web Share API (mobile)
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               files: [file],
               title: `Calendário ${MONTH_NAMES[month]} ${year}`,
-              text: `Calendário do Departamento Servir - ${MONTH_NAMES[month]} ${year}`,
             });
-          } catch (err) {
-            // Fallback: baixar
+          } catch {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
-            a.href = url;
-            a.download = `calendario-${MONTH_NAMES[month]}-${year}.png`;
-            a.click();
+            a.href = url; a.download = file.name; a.click();
           }
         } else {
-          // Desktop: baixa e abre WhatsApp Web
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
-          a.href = url;
-          a.download = `calendario-${MONTH_NAMES[month]}-${year}.png`;
-          a.click();
-          setTimeout(() => {
-            window.open(`https://web.whatsapp.com`, "_blank");
-            alert("Imagem baixada! Cole no WhatsApp para compartilhar.");
-          }, 500);
+          a.href = url; a.download = file.name; a.click();
         }
+        setExporting(false);
       }, "image/png");
     } catch (err) {
       alert("Erro: " + String(err));
+      setExporting(false);
     }
-    setExporting(false);
   }
 
   const monthServices = services.filter((s) => {
@@ -237,33 +176,17 @@ export default function CalendarioPage() {
     return d.getMonth() === month && d.getFullYear() === year;
   });
 
-  // Datas únicas do mês com cultos
   const uniqueDates = [...new Set(monthServices.map((s) => s.date))].sort();
 
-  // Cor por equipe
-  function getTeamColor(teamName: string) {
-    const idx = teams.findIndex((t) => t.name === teamName);
-    return idx >= 0 ? TEAM_COLORS[idx % TEAM_COLORS.length] : { bg: "bg-gray-400", text: "text-white" };
-  }
+  // Turnos sempre os 3 principais (igual à imagem do usuário)
+  const turnosFixos: Turno[] = ["Manhã", "Tarde", "Noite"];
 
-  // Turnos que aparecem na grade (somente os usados no mês)
-  const turnosUsados: Turno[] = ["Manhã", "Tarde", "Noite"].filter((t) =>
-    monthServices.some((s) => s.turno === t)
-  ) as Turno[];
-  if (turnosUsados.length === 0) turnosUsados.push("Manhã", "Tarde", "Noite");
-
-  // Aniversariantes do mês
   const aniversariantes = members
     .filter((m) => {
       if (!m.aniversario) return false;
-      const parts = m.aniversario.split("-");
-      return parseInt(parts[1]) === month + 1;
+      return parseInt(m.aniversario.split("-")[1]) === month + 1;
     })
-    .sort((a, b) => {
-      const da = parseInt(a.aniversario.split("-")[2]);
-      const db = parseInt(b.aniversario.split("-")[2]);
-      return da - db;
-    });
+    .sort((a, b) => parseInt(a.aniversario.split("-")[2]) - parseInt(b.aniversario.split("-")[2]));
 
   if (loading) {
     return (
@@ -283,10 +206,10 @@ export default function CalendarioPage() {
         <div className="flex gap-2">
           <button
             onClick={shareWhatsApp}
-            disabled={exporting}
+            disabled={exporting || uniqueDates.length === 0}
             className="flex items-center gap-1.5 px-3 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
           >
-            <Share2 size={14} /> {exporting ? "..." : "Compartilhar"}
+            <Share2 size={14} /> {exporting ? "Gerando..." : "Compartilhar"}
           </button>
           {isAdmin && (
             <Button onClick={() => openCreate()} size="sm"><Plus size={15} /> Culto</Button>
@@ -294,131 +217,126 @@ export default function CalendarioPage() {
         </div>
       </div>
 
-      {/* Navegação de mês */}
+      {/* Navegação */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex items-center justify-between">
         <button onClick={prevMonth} className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-          prev
+          <ChevronLeft size={14} className="inline" /> ant
         </button>
-        <button onClick={goToday} className="font-bold text-gray-900">
-          {MONTH_NAMES[month]} {year}
-        </button>
+        <p className="font-bold text-gray-900">{MONTH_NAMES[month]} {year}</p>
         <button onClick={nextMonth} className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-          prox
+          prox <ChevronRight size={14} className="inline" />
         </button>
       </div>
 
-      {/* Grade tipo planilha — esta é a parte exportada */}
-      <div ref={gridRef} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
-        <div className="mb-3">
-          <p className="font-bold text-gray-900">Calendário</p>
-          <p className="text-xs text-gray-400">Grade de equipes por culto e turno · {MONTH_NAMES[month]} {year}</p>
+      {/* Grade + Aniversariantes (a parte exportada) */}
+      <div ref={gridRef} className="bg-white p-6" style={{ minWidth: "fit-content" }}>
+        {/* Header da imagem */}
+        <div className="text-center pb-4 mb-4 border-b-2 border-gray-900">
+          <p className="text-lg font-bold tracking-wide text-gray-900">BELÉM CHURCH · {MONTH_NAMES[month].toUpperCase()} {year}</p>
         </div>
 
         {uniqueDates.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-400 text-sm">Nenhum culto cadastrado neste mês.</p>
-            {isAdmin && (
-              <button onClick={() => openCreate()} className="text-sm text-blue-600 hover:underline mt-2">
-                + Cadastrar primeiro culto
-              </button>
-            )}
-          </div>
+          <p className="text-center text-gray-400 text-sm py-8">Nenhum culto cadastrado neste mês.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max border-collapse text-xs">
-              <thead>
-                <tr>
-                  <th className="bg-black text-white font-bold px-3 py-2 rounded-tl-lg text-left">TURNO</th>
-                  {uniqueDates.map((date, i) => {
-                    const d = new Date(date + "T12:00:00");
-                    const dayLabel = WEEK_DAYS[d.getDay()];
-                    const dayNum = String(d.getDate()).padStart(2, "0");
-                    const monthNum = String(d.getMonth() + 1).padStart(2, "0");
-                    const isLast = i === uniqueDates.length - 1;
+          <table className="border-collapse text-xs" style={{ width: "100%", minWidth: `${120 + uniqueDates.length * 110}px` }}>
+            <thead>
+              <tr>
+                <th className="bg-gray-900 text-white font-bold px-3 py-3 text-center" style={{ width: 100 }}>TURNO</th>
+                {uniqueDates.map((date) => {
+                  const d = new Date(date + "T12:00:00");
+                  const dayLabel = WEEK_DAYS[d.getDay()];
+                  const dayNum = String(d.getDate()).padStart(2, "0");
+                  const monthNum = String(d.getMonth() + 1).padStart(2, "0");
+                  return (
+                    <th key={date} className="bg-gray-900 text-white font-bold px-2 py-3 text-center" style={{ minWidth: 110 }}>
+                      <div className="text-xs tracking-wide">{dayLabel}</div>
+                      <div className="text-sm font-bold mt-1">{dayNum}/{monthNum}</div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {turnosFixos.map((turno) => (
+                <tr key={turno}>
+                  <td className="bg-gray-50 px-3 py-4 font-bold text-gray-600 text-center text-xs border border-gray-200">
+                    {turno.toUpperCase()}
+                  </td>
+                  {uniqueDates.map((date) => {
+                    const svcs = monthServices.filter((s) => s.date === date && s.turno === turno);
                     return (
-                      <th key={date} className={`bg-black text-white font-bold px-3 py-2 text-center min-w-24 ${isLast ? "rounded-tr-lg" : ""}`}>
-                        <div className="text-[10px] tracking-wide">{dayLabel}</div>
-                        <div className="text-xs text-gray-300">{dayNum}/{monthNum}</div>
-                      </th>
+                      <td key={date} className="border border-gray-200 p-2 text-center align-middle" style={{ height: 70 }}>
+                        {svcs.length === 0 ? (
+                          <button
+                            onClick={() => isAdmin && openCreate(date, turno)}
+                            className="w-full h-full text-gray-200 text-2xl hover:text-gray-400"
+                          >
+                            +
+                          </button>
+                        ) : (
+                          <div className="space-y-1">
+                            {svcs.map((s) => {
+                              const color = getTeamColor(s.teamName);
+                              return (
+                                <div key={s.id}>
+                                  <button
+                                    onClick={() => isAdmin && openEdit(s)}
+                                    className="inline-block px-3 py-1.5 rounded-lg text-xs font-bold hover:opacity-90"
+                                    style={{ backgroundColor: color.bg, color: color.text }}
+                                  >
+                                    {s.teamName.toUpperCase()}
+                                  </button>
+                                  {s.observacao && (
+                                    <p className="text-[10px] font-medium mt-1" style={{ color: color.bg }}>
+                                      {s.observacao}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </td>
                     );
                   })}
                 </tr>
-              </thead>
-              <tbody>
-                {turnosUsados.map((turno) => (
-                  <tr key={turno}>
-                    <td className="bg-gray-50 px-3 py-3 font-bold text-gray-600 text-center text-[11px]">
-                      {turno.toUpperCase()}
-                    </td>
-                    {uniqueDates.map((date) => {
-                      const svcs = monthServices.filter((s) => s.date === date && s.turno === turno);
-                      return (
-                        <td key={date} className="border border-gray-100 p-2 text-center align-middle">
-                          {svcs.length === 0 ? (
-                            <button
-                              onClick={() => isAdmin && openCreate(date, turno)}
-                              className="w-full h-full text-gray-200 text-xl hover:text-gray-400 transition-colors"
-                            >
-                              +
-                            </button>
-                          ) : (
-                            <div className="space-y-1">
-                              {svcs.map((s) => {
-                                const color = getTeamColor(s.teamName);
-                                return (
-                                  <div key={s.id} className="space-y-0.5">
-                                    <button
-                                      onClick={() => isAdmin && openEdit(s)}
-                                      className={`inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold ${color.bg} ${color.text} hover:opacity-90 transition-opacity`}
-                                    >
-                                      {s.teamName.toUpperCase()}
-                                    </button>
-                                    {s.observacao && (
-                                      <p className="text-[9px] text-gray-500 leading-tight">{s.observacao}</p>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* Aniversariantes (parte da imagem) */}
+        {aniversariantes.length > 0 && (
+          <div className="mt-6 pt-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🎂</span>
+                <p className="font-bold text-gray-900 text-sm tracking-wide">ANIVERSARIANTES DE {MONTH_NAMES[month].toUpperCase()}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                {aniversariantes.map((m) => {
+                  const day = parseInt(m.aniversario.split("-")[2]);
+                  const team = teams.find((t) => t.id === m.teamId);
+                  const color = getTeamColor(team?.name ?? "");
+                  return (
+                    <div key={m.id} className="flex items-center gap-2 py-1 border-b border-amber-100/50 last:border-0">
+                      <span className="text-pink-500 text-xs">📍</span>
+                      <span className="text-xs font-bold text-gray-700 w-12">{String(day).padStart(2, "0")}/{String(month + 1).padStart(2, "0")}</span>
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color.bg }} />
+                      <span className="text-xs font-semibold text-gray-900 flex-1 truncate">{m.name}</span>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wide">{team?.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Aniversariantes dentro do bloco exportado */}
-        {aniversariantes.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🎂</span>
-              <p className="font-bold text-gray-900 text-sm">Aniversariantes do Mês</p>
-            </div>
-            <p className="text-xs text-gray-400 mb-3">Em ordem crescente de data</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {aniversariantes.map((m) => {
-                const day = parseInt(m.aniversario.split("-")[2]);
-                const team = teams.find((t) => t.id === m.teamId);
-                const color = getTeamColor(team?.name ?? "");
-                return (
-                  <div key={m.id} className="flex items-center gap-2 py-1">
-                    <span className="text-pink-500">📍</span>
-                    <span className="text-xs font-bold text-gray-700 w-10">{String(day).padStart(2, "0")}/{String(month + 1).padStart(2, "0")}</span>
-                    <span className={`w-2 h-2 rounded-full ${color.bg}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{m.name}</p>
-                      <p className="text-[10px] text-gray-400 uppercase">{team?.name}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Footer da imagem */}
+        <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+          <p className="text-xs text-gray-400">Calendário de Equipes · Belém Church Servir</p>
+        </div>
       </div>
 
       {/* Modal */}
@@ -429,25 +347,24 @@ export default function CalendarioPage() {
             {getAvailableTurnos(form.date).map((t) => <option key={t} value={t}>{t}</option>)}
           </Select>
           <Select label="Equipe responsável" value={form.teamId} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
-            <option value="">Selecione a equipe</option>
-            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <option value="">Selecione</option>
+            {[...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
           </Select>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Horário culto" type="time" value={form.horario} onChange={(e) => setForm({ ...form, horario: e.target.value })} />
             <Input label="Chegada equipe" type="time" value={form.horarioChegada} onChange={(e) => setForm({ ...form, horarioChegada: e.target.value })} />
           </div>
           <Textarea
-            label="Observação (aparece no card)"
+            label="Observação"
             value={form.observacao}
             onChange={(e) => setForm({ ...form, observacao: e.target.value })}
             placeholder="Ex: Santa Ceia, Batismo..."
             rows={2}
           />
           {editing && isAdmin && (
-            <button
-              onClick={() => { handleDelete(editing.id); setModalOpen(false); }}
-              className="text-xs text-red-500 hover:underline"
-            >
+            <button onClick={() => { handleDelete(editing.id); setModalOpen(false); }} className="text-xs text-red-500 hover:underline">
               <Trash2 size={11} className="inline" /> Excluir este culto
             </button>
           )}
