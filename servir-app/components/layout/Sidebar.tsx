@@ -25,19 +25,18 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 
-// role: undefined = todos, "admin" = só admin, "leader" = admin+líder
+// minRole: undefined = todos, "leader" = líderes/coordenador, "admin" = só admin/coordenador
 const navItems = [
   { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, minRole: undefined },
   { href: "/app/schedules", label: "Escalas", icon: ClipboardList, minRole: undefined },
   { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, minRole: undefined },
   { href: "/app/calendario", label: "Calendário", icon: Calendar, minRole: undefined },
-  { href: "/app/members", label: "Membros", icon: UserCheck, minRole: "leader" },
+  { href: "/app/members", label: "Membros", icon: UserCheck, minRole: undefined },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, minRole: "leader" },
   { href: "/app/historico", label: "Histórico", icon: History, minRole: "leader" },
   { href: "/app/forms", label: "Formulários", icon: FileText, minRole: "leader" },
   { href: "/app/teams", label: "Equipes", icon: Users, minRole: "admin" },
   { href: "/app/services", label: "Cultos", icon: CalendarDays, minRole: "admin" },
-  { href: "/app/lideres", label: "Líderes", icon: UserCog, minRole: "admin" },
 ] as const;
 
 export function Sidebar() {
@@ -53,10 +52,13 @@ export function Sidebar() {
   };
 
   const role = appUser?.role ?? "member";
+  const funcao = appUser?.funcao;
+  const isCoord = role === "admin" || funcao === "Coordenador";
+  const isLeader = isCoord || funcao === "Líder" || funcao === "Co-líder";
   const visibleItems = navItems.filter((item) => {
     if (!item.minRole) return true;
-    if (item.minRole === "leader") return role === "leader" || role === "admin";
-    if (item.minRole === "admin") return role === "admin";
+    if (item.minRole === "leader") return isLeader;
+    if (item.minRole === "admin") return isCoord;
     return true;
   });
 
