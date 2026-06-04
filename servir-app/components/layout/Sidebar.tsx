@@ -19,6 +19,7 @@ const allItems = [
   { href: "/app/schedules", label: "Escalas", icon: ClipboardList, role: "all" },
   { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, role: "all" },
   { href: "/app/members", label: "Membros", icon: UserCheck, role: "all" },
+  { href: "/app/mural", label: "Mural", icon: Megaphone, role: "all" },
   { href: "/app/notificacoes", label: "Notificações", icon: Bell, role: "all" },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, role: "leader" },
   { href: "/app/historico", label: "Histórico", icon: History, role: "leader" },
