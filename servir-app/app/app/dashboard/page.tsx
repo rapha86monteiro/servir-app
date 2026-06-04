@@ -3,17 +3,17 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getServices } from "@/lib/firestore/services";
-import { getTeams, getTeamsByLeader } from "@/lib/firestore/teams";
+import { getTeams } from "@/lib/firestore/teams";
 import { getMembers } from "@/lib/firestore/members";
 import { getSubstituicoesAbertas } from "@/lib/firestore/substituicoes";
 import type { Service, Team, Member, Substituicao } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { Cake, ChevronRight, RefreshCw, Calendar } from "lucide-react";
+import { Cake, ChevronRight, ChevronLeft, RefreshCw, Calendar, MessageSquare } from "lucide-react";
 import Link from "next/link";
 
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-const WEEK_DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
-const WEEK_DAYS_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const WEEK_DAYS = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
+const WEEK_DAYS_FULL = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 
 const TURNO_COLORS: Record<string, string> = {
   "Manhã": "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -22,27 +22,38 @@ const TURNO_COLORS: Record<string, string> = {
   "Especial": "bg-purple-100 text-purple-700 border-purple-200",
 };
 
-function getMonthDay(dateStr: string) {
+function getMonthDayFromAniversario(dateStr: string) {
   if (!dateStr) return null;
+  // Suporta tanto YYYY-MM-DD quanto outros formatos
   const parts = dateStr.split("-");
-  return { month: parseInt(parts[1]), day: parseInt(parts[2]) };
+  if (parts.length === 3) {
+    return { month: parseInt(parts[1]), day: parseInt(parts[2]) };
+  }
+  return null;
 }
 
-function getWeekDates() {
+function getWeekStart(offset = 0) {
   const now = new Date();
   const day = now.getDay();
   const monday = new Date(now);
-  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
   monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function getWeekDates(weekStart: Date) {
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
     return d;
   });
 }
 
 function dateToISO(d: Date) {
-  return d.toISOString().split("T")[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export default function DashboardPage() {
@@ -51,19 +62,24 @@ export default function DashboardPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [substituicoes, setSubstituicoes] = useState<Substituicao[]>([]);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const todayISO = dateToISO(now);
-  const weekDates = getWeekDates();
+
+  const weekStart = getWeekStart(weekOffset);
+  const weekDates = getWeekDates(weekStart);
+  const weekEnd = weekDates[6];
 
   useEffect(() => {
     async function load() {
       if (!appUser) return;
-      const isAdmin = appUser.role === "admin" || appUser.funcao === "Coordenador";
+      setLoading(true);
       const [svcs, allTeams, allMembers, subs] = await Promise.all([
         getServices(),
-        isAdmin ? getTeams() : getTeamsByLeader(appUser.uid),
+        getTeams(),
         getMembers(),
         getSubstituicoesAbertas(),
       ]);
@@ -71,29 +87,60 @@ export default function DashboardPage() {
       setTeams(allTeams);
       setMembers(allMembers);
       setSubstituicoes(subs);
+      setLoading(false);
     }
     load();
   }, [appUser]);
 
-  // Cultos da semana atual
+  // Cultos da semana visível
   const weekServices = services.filter((s) => {
     const sDate = new Date(s.date + "T12:00:00");
-    return sDate >= weekDates[0] && sDate <= new Date(weekDates[6].getTime() + 86400000);
+    sDate.setHours(0, 0, 0, 0);
+    const start = new Date(weekStart);
+    const end = new Date(weekEnd);
+    end.setHours(23, 59, 59, 999);
+    return sDate >= start && sDate <= end;
   });
 
-  // Agrupar cultos por dia
+  // Agrupar por dia
   const cultosByDay = weekDates.map((d) => {
     const iso = dateToISO(d);
     const dayServices = weekServices.filter((s) => s.date === iso);
     return { date: d, iso, services: dayServices };
   }).filter((d) => d.services.length > 0);
 
-  // Aniversariantes
+  // Aniversariantes do mês atual
   const aniversariantes = members
-    .filter((m) => m.aniversario && getMonthDay(m.aniversario)?.month === currentMonth)
-    .sort((a, b) => (getMonthDay(a.aniversario)?.day ?? 0) - (getMonthDay(b.aniversario)?.day ?? 0));
+    .filter((m) => {
+      if (!m.aniversario) return false;
+      const md = getMonthDayFromAniversario(m.aniversario);
+      return md?.month === currentMonth;
+    })
+    .sort((a, b) => {
+      const da = getMonthDayFromAniversario(a.aniversario)?.day ?? 0;
+      const db = getMonthDayFromAniversario(b.aniversario)?.day ?? 0;
+      return da - db;
+    });
 
-  const todayBirthdays = aniversariantes.filter((m) => getMonthDay(m.aniversario)?.day === now.getDate());
+  const todayBirthdays = aniversariantes.filter((m) =>
+    getMonthDayFromAniversario(m.aniversario)?.day === now.getDate()
+  );
+
+  const weekLabel = weekOffset === 0
+    ? "Esta semana"
+    : weekOffset === 1
+    ? "Próxima semana"
+    : weekOffset === -1
+    ? "Semana passada"
+    : `${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1}`;
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-black" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -103,7 +150,7 @@ export default function DashboardPage() {
         <p className="text-gray-400 text-sm">Departamento Servir · Belém Church</p>
       </div>
 
-      {/* Alertas urgentes */}
+      {/* Alerta de aniversariantes do dia */}
       {todayBirthdays.length > 0 && (
         <div className="space-y-2">
           {todayBirthdays.map((m) => {
@@ -133,7 +180,20 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Grade de dias da semana */}
+        {/* Navegação semana */}
+        <div className="flex items-center justify-between mb-4 bg-gray-50 rounded-xl p-1.5">
+          <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-1.5 hover:bg-white rounded-lg transition-colors">
+            <ChevronLeft size={16} className="text-gray-600" />
+          </button>
+          <button onClick={() => setWeekOffset(0)} className="text-sm font-semibold text-gray-700 hover:bg-white rounded-lg px-3 py-1 transition-colors">
+            {weekLabel}
+          </button>
+          <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-1.5 hover:bg-white rounded-lg transition-colors">
+            <ChevronRight size={16} className="text-gray-600" />
+          </button>
+        </div>
+
+        {/* Grade dos 7 dias */}
         <div className="grid grid-cols-7 gap-1 mb-4">
           {weekDates.map((d, i) => {
             const iso = dateToISO(d);
@@ -157,14 +217,14 @@ export default function DashboardPage() {
           })}
         </div>
 
-        {/* Detalhes dos cultos da semana */}
+        {/* Detalhes dos cultos */}
         {cultosByDay.length === 0 ? (
-          <p className="text-center text-gray-400 text-sm py-4">Nenhum culto esta semana</p>
+          <p className="text-center text-gray-400 text-sm py-6">Nenhum culto nesta semana</p>
         ) : (
           <div className="space-y-3">
             {cultosByDay.map(({ date, iso, services: daySvcs }) => {
               const isToday = iso === todayISO;
-              const isPast = date < new Date(todayISO + "T00:00:00");
+              const isPast = iso < todayISO;
               return (
                 <div key={iso} className={`rounded-xl p-3 border ${isToday ? "bg-gray-900 border-gray-900" : isPast ? "bg-gray-50 border-gray-100 opacity-60" : "bg-white border-gray-100"}`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -175,17 +235,24 @@ export default function DashboardPage() {
                   </div>
                   <div className="space-y-2">
                     {daySvcs.map((s) => (
-                      <div key={s.id} className={`flex items-center justify-between ${isToday ? "text-white" : "text-gray-800"}`}>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${TURNO_COLORS[s.turno] ?? "bg-gray-100 text-gray-600"}`}>
-                            {s.turno}
-                          </span>
-                          <p className="text-sm font-semibold">{s.teamName}</p>
+                      <div key={s.id} className={isToday ? "text-white" : "text-gray-800"}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${TURNO_COLORS[s.turno] ?? "bg-gray-100 text-gray-600"}`}>
+                              {s.turno}
+                            </span>
+                            <p className="text-sm font-semibold truncate">{s.teamName}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            {s.horario && <p className={`text-xs ${isToday ? "text-white/60" : "text-gray-400"}`}>Culto {s.horario}</p>}
+                            {s.horarioChegada && <p className="text-xs font-bold text-red-400">Chegada {s.horarioChegada}</p>}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          {s.horario && <p className={`text-xs ${isToday ? "text-white/60" : "text-gray-400"}`}>Culto {s.horario}</p>}
-                          {s.horarioChegada && <p className="text-xs font-bold text-red-400">Chegada {s.horarioChegada}</p>}
-                        </div>
+                        {s.observacao && (
+                          <p className={`text-xs mt-1 flex items-start gap-1 ${isToday ? "text-white/70" : "text-gray-500"}`}>
+                            <MessageSquare size={10} className="mt-0.5 flex-shrink-0" /> {s.observacao}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -196,7 +263,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Substituições abertas */}
+      {/* Substituições */}
       {substituicoes.length > 0 && (
         <Link href="/app/substituicoes">
           <div className="bg-white rounded-2xl border border-blue-200 shadow-sm p-4">
@@ -227,17 +294,19 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* Aniversariantes do mês */}
-      {aniversariantes.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Cake size={16} className="text-pink-400" />
-            <p className="font-bold text-gray-900 text-sm">Aniversariantes de {MONTH_NAMES[currentMonth - 1]}</p>
-            <span className="text-xs text-gray-400">({aniversariantes.length})</span>
-          </div>
+      {/* Aniversariantes */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Cake size={16} className="text-pink-400" />
+          <p className="font-bold text-gray-900 text-sm">Aniversariantes de {MONTH_NAMES[currentMonth - 1]}</p>
+          <span className="text-xs text-gray-400">({aniversariantes.length})</span>
+        </div>
+        {aniversariantes.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">Nenhum aniversariante este mês</p>
+        ) : (
           <div className="space-y-1">
             {aniversariantes.map((m) => {
-              const md = getMonthDay(m.aniversario)!;
+              const md = getMonthDayFromAniversario(m.aniversario)!;
               const team = teams.find((t) => t.id === m.teamId);
               const isToday = md.day === now.getDate();
               const isPast = md.day < now.getDate();
@@ -258,8 +327,8 @@ export default function DashboardPage() {
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
