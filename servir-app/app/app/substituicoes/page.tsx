@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSubstituicoesAbertas, aceitarSubstituicao, cancelarSubstituicao } from "@/lib/firestore/substituicoes";
-import { getMember } from "@/lib/firestore/members";
-import type { Substituicao } from "@/lib/types";
+import { getSubstituicoesAbertas, aceitarSubstituicaoCompleta, cancelarSubstituicao } from "@/lib/firestore/substituicoes";
+import { getMembers } from "@/lib/firestore/members";
+import { getTeams } from "@/lib/firestore/teams";
+import type { Substituicao, Member, Team } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { auth } from "@/lib/firebase";
 import { formatDate } from "@/lib/utils";
 import { RefreshCw, CheckCircle2, X } from "lucide-react";
 
@@ -18,6 +20,8 @@ const TURNO_COLORS: Record<string, string> = {
 export default function SubstituicoesPage() {
   const { appUser } = useAuth();
   const [substituicoes, setSubstituicoes] = useState<Substituicao[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [myMemberId, setMyMemberId] = useState<string | null>(null);
@@ -28,11 +32,20 @@ export default function SubstituicoesPage() {
     if (!appUser) return;
     setLoading(true);
 
-    // Se for membro, busca o memberId
-    if (appUser.memberId) setMyMemberId(appUser.memberId);
-
-    const subs = await getSubstituicoesAbertas();
+    const uid = auth.currentUser?.uid ?? appUser.uid;
+    const [subs, allMembers, allTeams] = await Promise.all([
+      getSubstituicoesAbertas(),
+      getMembers(),
+      getTeams(),
+    ]);
     setSubstituicoes(subs);
+    setMembers(allMembers);
+    setTeams(allTeams);
+
+    // Acha meu registro de membro pelo uid
+    const meu = allMembers.find((m) => m.uid === uid);
+    if (meu) setMyMemberId(meu.id);
+
     setLoading(false);
   }
 
@@ -40,8 +53,15 @@ export default function SubstituicoesPage() {
     if (!appUser) return;
     setActing(sub.id);
     try {
-      const name = appUser.name;
-      await aceitarSubstituicao(sub.id, appUser.uid, name);
+      const uid = auth.currentUser?.uid ?? appUser.uid;
+      // Encontra o registro de membro de quem está aceitando
+      const meuMembro = members.find((m) => m.uid === uid);
+      const memberId = meuMembro?.id ?? uid;
+      const name = meuMembro?.name ?? appUser.name;
+      const teamName = teams.find((t) => t.id === meuMembro?.teamId)?.name ?? "";
+
+      await aceitarSubstituicaoCompleta(sub, { memberId, name, teamName });
+      alert(`Você assumiu o lugar de ${sub.membroName} em ${sub.position}! ✅`);
       load();
     } catch (err) {
       alert("Erro: " + String(err));
