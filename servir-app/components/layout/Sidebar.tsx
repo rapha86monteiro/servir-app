@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
   LayoutDashboard, Calendar, ClipboardList, RefreshCw, UserCheck,
   Bell, ClipboardCheck, History, FileText, Megaphone, UserCheck2,
@@ -34,6 +36,28 @@ export function Sidebar() {
   const { dark, toggle } = useTheme();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [openSubs, setOpenSubs] = useState(0);
+
+  useEffect(() => {
+    async function loadBadges() {
+      try {
+        const [usersSnap, subsSnap] = await Promise.all([
+          getDocs(query(collection(db, "users"), where("status", "==", "pending"))),
+          getDocs(query(collection(db, "substituicoes"), where("status", "==", "aberta"))),
+        ]);
+        setPendingApprovals(usersSnap.size);
+        setOpenSubs(subsSnap.size);
+      } catch {}
+    }
+    if (appUser) loadBadges();
+  }, [appUser, pathname]);
+
+  // Mapa de badges por rota
+  const badges: Record<string, number> = {
+    "/app/teams": pendingApprovals, // Configurações aponta para teams
+    "/app/substituicoes": openSubs,
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -68,21 +92,29 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {visibleItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                pathname.startsWith(href)
-                  ? "bg-white text-black"
-                  : "text-white/60 hover:bg-white/10 hover:text-white"
-              )}
-            >
-              <Icon size={17} />
-              {label}
-            </Link>
-          ))}
+          {visibleItems.map(({ href, label, icon: Icon }) => {
+            const badge = badges[href] ?? 0;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  pathname.startsWith(href)
+                    ? "bg-white text-black"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                )}
+              >
+                <Icon size={17} />
+                <span className="flex-1">{label}</span>
+                {badge > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center">
+                    {badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
@@ -110,28 +142,45 @@ export function Sidebar() {
 
       {/* Bottom nav mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex">
-        {visibleItems.slice(0, 4).map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            onClick={() => setMoreOpen(false)}
-            className={cn(
-              "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors",
-              pathname.startsWith(href) ? "text-black" : "text-gray-400"
-            )}
-          >
-            <Icon size={20} />
-            <span className="text-[10px]">{label}</span>
-          </Link>
-        ))}
+        {visibleItems.slice(0, 4).map(({ href, label, icon: Icon }) => {
+          const badge = badges[href] ?? 0;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMoreOpen(false)}
+              className={cn(
+                "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors relative",
+                pathname.startsWith(href) ? "text-black" : "text-gray-400"
+              )}
+            >
+              <div className="relative">
+                <Icon size={20} />
+                {badge > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">
+                    {badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px]">{label}</span>
+            </Link>
+          );
+        })}
         <button
           onClick={() => setMoreOpen(!moreOpen)}
           className={cn(
-            "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors",
+            "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors relative",
             moreOpen ? "text-black" : "text-gray-400"
           )}
         >
-          {moreOpen ? <X size={20} /> : <MoreHorizontal size={20} />}
+          <div className="relative">
+            {moreOpen ? <X size={20} /> : <MoreHorizontal size={20} />}
+            {!moreOpen && pendingApprovals > 0 && (
+              <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {pendingApprovals}
+              </span>
+            )}
+          </div>
           <span className="text-[10px]">Mais</span>
         </button>
       </nav>
@@ -140,20 +189,30 @@ export function Sidebar() {
       {moreOpen && (
         <div className="md:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg max-h-[60vh] overflow-y-auto">
           <div className="grid grid-cols-3 gap-0">
-            {visibleItems.slice(4).map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setMoreOpen(false)}
-                className={cn(
-                  "flex flex-col items-center gap-1 py-4 text-xs font-medium border-b border-gray-100 transition-colors",
-                  pathname.startsWith(href) ? "text-black bg-gray-50" : "text-gray-600 hover:bg-gray-50"
-                )}
-              >
-                <Icon size={22} />
-                <span className="text-[10px] text-center">{label}</span>
-              </Link>
-            ))}
+            {visibleItems.slice(4).map(({ href, label, icon: Icon }) => {
+              const badge = badges[href] ?? 0;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMoreOpen(false)}
+                  className={cn(
+                    "flex flex-col items-center gap-1 py-4 text-xs font-medium border-b border-gray-100 transition-colors relative",
+                    pathname.startsWith(href) ? "text-black bg-gray-50" : "text-gray-600 hover:bg-gray-50"
+                  )}
+                >
+                  <div className="relative">
+                    <Icon size={22} />
+                    {badge > 0 && (
+                      <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center">
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-center">{label}</span>
+                </Link>
+              );
+            })}
             <button
               onClick={() => { toggle(); setMoreOpen(false); }}
               className="flex flex-col items-center gap-1 py-4 text-xs font-medium text-gray-600 border-b border-gray-100"
