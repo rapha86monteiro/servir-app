@@ -73,6 +73,17 @@ export interface ScheduleSlot {
   confirmed: boolean | null;
   justification: string;
   needsSubstitute?: boolean;
+  checkedIn?: boolean | null; // presença real no dia (null = não marcado)
+}
+
+export interface Indisponibilidade {
+  id: string;
+  memberId: string;
+  memberName: string;
+  uid: string;
+  date: string; // data que NÃO pode servir
+  motivo: string;
+  createdAt: string;
 }
 
 export const POSITIONS = [
