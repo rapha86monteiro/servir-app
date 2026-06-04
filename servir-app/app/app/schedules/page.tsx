@@ -154,7 +154,7 @@ export default function SchedulesPage() {
 
   function shareWhatsApp() {
     if (!selected) return;
-    const total = Object.values(selected.positions).reduce((acc, s) => acc + s.length, 0);
+    const total = selected.positions ? Object.values(selected.positions).reduce((acc, s) => acc + (s?.length ?? 0), 0) : 0;
     const url = getPublicUrl();
     const text = `📋 *Escala ${selected.teamName}*\n🗓️ ${selected.serviceTitle} — ${formatDate(selected.serviceDate)} (${selected.serviceTurno})\n👥 ${total} escalados\n\nConfirme sua presença: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
@@ -166,8 +166,8 @@ export default function SchedulesPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const totalEscalados = selected
-    ? Object.values(selected.positions).reduce((acc, s) => acc + s.length, 0)
+  const totalEscalados = selected?.positions
+    ? Object.values(selected.positions).reduce((acc, s) => acc + (s?.length ?? 0), 0)
     : 0;
 
   const filteredMembers = members.filter(
@@ -231,7 +231,7 @@ export default function SchedulesPage() {
             {showCultoList && (
               <div className="border-t border-gray-100 max-h-64 overflow-y-auto">
                 {schedules.map((s) => {
-                  const total = Object.values(s.positions).reduce((acc, slots) => acc + slots.length, 0);
+                  const total = s.positions ? Object.values(s.positions).reduce((acc, slots) => acc + (slots?.length ?? 0), 0) : 0;
                   const isSelected = selected?.id === s.id;
                   return (
                     <button
@@ -286,7 +286,7 @@ export default function SchedulesPage() {
           {selected && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {POSITIONS.map((position) => {
-                const slots = selected.positions[position] ?? [];
+                const slots = (selected.positions ?? {})[position] ?? [];
                 return (
                   <div key={position} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
                     <div className="flex items-center justify-between mb-3">
