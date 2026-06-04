@@ -15,11 +15,14 @@ import {
   History,
   Calendar,
   UserCog,
+  MoreHorizontal,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const navItems = [
   { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, adminOnly: false },
@@ -38,6 +41,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { appUser } = useAuth();
   const router = useRouter();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -103,11 +107,10 @@ export function Sidebar() {
           <Link
             key={href}
             href={href}
+            onClick={() => setMoreOpen(false)}
             className={cn(
               "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors",
-              pathname.startsWith(href)
-                ? "text-blue-600"
-                : "text-gray-400"
+              pathname.startsWith(href) ? "text-blue-600" : "text-gray-400"
             )}
           >
             <Icon size={20} />
@@ -115,13 +118,48 @@ export function Sidebar() {
           </Link>
         ))}
         <button
-          onClick={handleSignOut}
-          className="flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium text-gray-400"
+          onClick={() => setMoreOpen(!moreOpen)}
+          className={cn(
+            "flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors",
+            moreOpen ? "text-blue-600" : "text-gray-400"
+          )}
         >
-          <LogOut size={20} />
-          <span className="text-[10px]">Sair</span>
+          {moreOpen ? <X size={20} /> : <MoreHorizontal size={20} />}
+          <span className="text-[10px]">Mais</span>
         </button>
       </nav>
+
+      {/* Menu "Mais" expandido no mobile */}
+      {moreOpen && (
+        <div className="md:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg">
+          <div className="grid grid-cols-3 gap-0">
+            {visibleItems.slice(4).map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMoreOpen(false)}
+                className={cn(
+                  "flex flex-col items-center gap-1 py-4 text-xs font-medium border-b border-gray-100 transition-colors",
+                  pathname.startsWith(href) ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:bg-gray-50"
+                )}
+              >
+                <Icon size={22} />
+                <span className="text-[10px] text-center">{label}</span>
+              </Link>
+            ))}
+            <button
+              onClick={handleSignOut}
+              className="flex flex-col items-center gap-1 py-4 text-xs font-medium text-red-400 border-b border-gray-100"
+            >
+              <LogOut size={22} />
+              <span className="text-[10px]">Sair</span>
+            </button>
+          </div>
+        </div>
+      )}
+      {moreOpen && (
+        <div className="md:hidden fixed inset-0 z-30" onClick={() => setMoreOpen(false)} />
+      )}
     </>
   );
 }
