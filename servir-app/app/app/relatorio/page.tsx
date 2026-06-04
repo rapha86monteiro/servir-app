@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { ReportTabs } from "@/components/layout/ReportTabs";
 import { getRelatorios, createRelatorio, deleteRelatorio } from "@/lib/firestore/relatorios";
 import { getServices } from "@/lib/firestore/services";
 import { getTeams, getTeamsByLeader } from "@/lib/firestore/teams";
@@ -131,11 +132,15 @@ export default function RelatorioPage() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Relatórios</h1>
+        <p className="text-gray-500 text-sm">Relatórios, histórico e estatísticas</p>
+      </div>
+
+      <ReportTabs />
+
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Relatórios</h1>
-          <p className="text-gray-500 text-sm">{relatorios.length} relatórios enviados</p>
-        </div>
+        <p className="text-sm font-semibold text-gray-700">{relatorios.length} relatórios enviados</p>
         <Button onClick={() => setShowForm(!showForm)} size="sm">
           <Plus size={15} /> Novo
         </Button>
