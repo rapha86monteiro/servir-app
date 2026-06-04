@@ -28,15 +28,14 @@ import Image from "next/image";
 // minRole: undefined = todos, "leader" = líderes/coordenador, "admin" = só admin/coordenador
 const navItems = [
   { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, minRole: undefined },
+  { href: "/app/calendario", label: "Calendário", icon: Calendar, minRole: undefined },
   { href: "/app/schedules", label: "Escalas", icon: ClipboardList, minRole: undefined },
   { href: "/app/substituicoes", label: "Substituições", icon: RefreshCw, minRole: undefined },
-  { href: "/app/calendario", label: "Calendário", icon: Calendar, minRole: undefined },
   { href: "/app/members", label: "Membros", icon: UserCheck, minRole: undefined },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, minRole: "leader" },
   { href: "/app/historico", label: "Histórico", icon: History, minRole: "leader" },
   { href: "/app/forms", label: "Formulários", icon: FileText, minRole: "leader" },
   { href: "/app/teams", label: "Equipes", icon: Users, minRole: "admin" },
-  { href: "/app/services", label: "Cultos", icon: CalendarDays, minRole: "admin" },
 ] as const;
 
 export function Sidebar() {
