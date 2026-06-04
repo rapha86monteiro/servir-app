@@ -38,7 +38,6 @@ const navItems = [
   { href: "/app/historico", label: "Histórico", icon: History, minRole: "leader" },
   { href: "/app/forms", label: "Formulários", icon: FileText, minRole: "leader" },
   { href: "/app/teams", label: "Equipes", icon: Users, minRole: "admin" },
-  { href: "/app/perfil", label: "Perfil", icon: User, minRole: undefined },
 ] as const;
 
 export function Sidebar() {
