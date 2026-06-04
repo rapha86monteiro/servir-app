@@ -296,7 +296,55 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* Aniversariantes */}
+      {/* Aniversariantes da semana */}
+      {(() => {
+        const weekBirthdays = members.filter((m) => {
+          if (!m.aniversario) return false;
+          const md = getMonthDayFromAniversario(m.aniversario);
+          if (!md) return false;
+          return weekDates.some((d) => d.getMonth() + 1 === md.month && d.getDate() === md.day);
+        });
+        if (weekBirthdays.length === 0) return null;
+        return (
+          <div className="bg-white rounded-2xl border border-pink-200 shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Cake size={16} className="text-pink-400" />
+              <p className="font-bold text-gray-900 text-sm">Aniversariantes da Semana</p>
+              <span className="text-xs text-gray-400">({weekBirthdays.length})</span>
+            </div>
+            <div className="space-y-2">
+              {weekBirthdays
+                .sort((a, b) => {
+                  const da = getMonthDayFromAniversario(a.aniversario)!.day;
+                  const db = getMonthDayFromAniversario(b.aniversario)!.day;
+                  return da - db;
+                })
+                .map((m) => {
+                  const md = getMonthDayFromAniversario(m.aniversario)!;
+                  const team = teams.find((t) => t.id === m.teamId);
+                  const isToday = md.day === now.getDate() && md.month === currentMonth;
+                  const matchingDate = weekDates.find((d) => d.getMonth() + 1 === md.month && d.getDate() === md.day);
+                  return (
+                    <div key={m.id} className={`flex items-center gap-3 p-2 rounded-xl ${isToday ? "bg-pink-100" : "bg-pink-50"}`}>
+                      <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center text-xs font-bold flex-shrink-0 ${isToday ? "bg-pink-300 text-pink-800" : "bg-white text-pink-500"}`}>
+                        <span className="text-[9px] uppercase leading-none">{matchingDate && WEEK_DAYS[matchingDate.getDay()]}</span>
+                        <span className="text-sm leading-none mt-0.5">{md.day}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold truncate ${isToday ? "text-pink-800" : "text-gray-800"}`}>
+                          {m.name} {isToday && "🎉 Hoje!"}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">{team?.name}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Aniversariantes do mês */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="flex items-center gap-2 mb-3">
           <Cake size={16} className="text-pink-400" />
