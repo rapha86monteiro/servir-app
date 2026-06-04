@@ -21,9 +21,22 @@ export interface Team {
   name: string;
   leaderIds: string[];
   memberIds: string[];
+  color?: string;
   inviteToken?: string;
   leaderInviteToken?: string;
 }
+
+export type ModuleKey =
+  | "dashboard" | "calendario" | "schedules" | "substituicoes" | "members"
+  | "relatorio" | "historico" | "forms" | "teams" | "aprovacoes" | "perfis";
+
+export interface ModulePerm {
+  view: boolean;
+  edit: boolean;
+}
+
+export type ProfilePermissions = Record<ModuleKey, ModulePerm>;
+export type AllProfilesPermissions = Record<Funcao, ProfilePermissions>;
 
 export interface Member {
   id: string;
