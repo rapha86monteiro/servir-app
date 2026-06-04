@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { auth } from "@/lib/firebase";
 import { getServices } from "@/lib/firestore/services";
 import { getTeams } from "@/lib/firestore/teams";
 import { getMembers } from "@/lib/firestore/members";
+import { getSchedules, updateSchedulePositions } from "@/lib/firestore/schedules";
 import { getSubstituicoesAbertas } from "@/lib/firestore/substituicoes";
 import { getAvisos, type Aviso } from "@/lib/firestore/avisos";
 import { getVersiculoDoDia } from "@/lib/versiculos";
-import type { Service, Team, Member, Substituicao } from "@/lib/types";
+import type { Service, Team, Member, Substituicao, Schedule, PositionSlots } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { Cake, ChevronRight, ChevronLeft, RefreshCw, Calendar, MessageSquare, Megaphone, Pin } from "lucide-react";
+import { Cake, ChevronRight, ChevronLeft, RefreshCw, Calendar, MessageSquare, Megaphone, Pin, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -65,6 +67,8 @@ export default function DashboardPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [substituicoes, setSubstituicoes] = useState<Substituicao[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [myMemberId, setMyMemberId] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -86,11 +90,16 @@ export default function DashboardPage() {
         const allMembers = await getMembers().catch(() => []);
         const subs = await getSubstituicoesAbertas().catch(() => []);
         const avs = await getAvisos().catch(() => []);
+        const scheds = await getSchedules().catch(() => []);
         setServices(svcs);
         setTeams(allTeams);
         setMembers(allMembers);
         setSubstituicoes(subs);
         setAvisos(avs);
+        setSchedules(scheds);
+        const uid = auth.currentUser?.uid ?? appUser.uid;
+        const meu = allMembers.find((m) => m.uid === uid);
+        setMyMemberId(meu?.id ?? null);
       } catch (err) {
         console.error("Erro ao carregar dashboard:", err);
       }
@@ -141,6 +150,31 @@ export default function DashboardPage() {
     ? "Semana passada"
     : `${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1}`;
 
+  // Escalas futuras aguardando MINHA confirmação
+  const minhasPendentes: { schedule: Schedule; position: string }[] = [];
+  if (myMemberId) {
+    schedules.forEach((s) => {
+      if (!s.positions || s.serviceDate < todayISO) return;
+      Object.entries(s.positions).forEach(([position, slots]) => {
+        slots.forEach((slot) => {
+          if (slot.memberId === myMemberId && slot.confirmed === null) {
+            minhasPendentes.push({ schedule: s, position });
+          }
+        });
+      });
+    });
+  }
+
+  async function confirmarMinha(schedule: Schedule, position: string, value: boolean) {
+    if (!myMemberId) return;
+    const positions: PositionSlots = { ...schedule.positions };
+    positions[position] = (positions[position] ?? []).map((s) =>
+      s.memberId === myMemberId ? { ...s, confirmed: value } : s
+    );
+    await updateSchedulePositions(schedule.id, positions);
+    setSchedules((prev) => prev.map((s) => s.id === schedule.id ? { ...s, positions } : s));
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -168,6 +202,36 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      {/* Confirmação pendente do voluntário */}
+      {minhasPendentes.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+          <p className="font-bold text-amber-800 text-sm mb-1">⏳ Você tem {minhasPendentes.length} escala{minhasPendentes.length !== 1 ? "s" : ""} para confirmar</p>
+          <p className="text-xs text-amber-600 mb-3">Confirme sua presença para o líder saber que pode contar com você.</p>
+          <div className="space-y-2">
+            {minhasPendentes.map(({ schedule, position }, idx) => (
+              <div key={schedule.id + idx} className="bg-white rounded-xl p-3">
+                <p className="text-sm font-semibold text-gray-900">{schedule.serviceTitle}</p>
+                <p className="text-xs text-gray-400 mb-2">{formatDate(schedule.serviceDate)} · {schedule.serviceTurno} · 📍 {position}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => confirmarMinha(schedule, position, true)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600"
+                  >
+                    <CheckCircle2 size={15} /> Vou servir
+                  </button>
+                  <button
+                    onClick={() => confirmarMinha(schedule, position, false)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-red-200 text-red-500 rounded-lg text-sm font-medium hover:bg-red-50"
+                  >
+                    <XCircle size={15} /> Não posso
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Mural de avisos */}
       {avisos.length > 0 && (
