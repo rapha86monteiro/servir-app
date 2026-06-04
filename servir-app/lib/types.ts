@@ -42,6 +42,7 @@ export interface Service {
   teamName: string;
   horario?: string;
   horarioChegada?: string;
+  observacao?: string;
   createdBy: string;
 }
 
