@@ -58,16 +58,19 @@ export default function ServicesPage() {
   }
 
   async function handleSave() {
-    if (!form.title.trim() || !form.date || !form.teamId) return;
-    const team = teams.find((t) => t.id === form.teamId);
-    const data = { ...form, teamName: team?.name ?? "" };
-    if (editing) {
-      await updateService(editing.id, data);
-    } else {
-      await createService({ ...data, createdBy: appUser!.uid });
+    try {
+      const team = teams.find((t) => t.id === form.teamId);
+      const data = { ...form, teamName: team?.name ?? "" };
+      if (editing) {
+        await updateService(editing.id, data);
+      } else {
+        await createService({ ...data, createdBy: appUser!.uid });
+      }
+      setModalOpen(false);
+      load();
+    } catch (err) {
+      alert("Erro ao salvar: " + String(err));
     }
-    setModalOpen(false);
-    load();
   }
 
   async function handleDelete(id: string) {
