@@ -17,6 +17,7 @@ export interface Team {
   leaderIds: string[];
   memberIds: string[];
   inviteToken?: string;
+  leaderInviteToken?: string;
 }
 
 export interface Member {
