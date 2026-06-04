@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ReportTabs } from "@/components/layout/ReportTabs";
 import { getRelatorios } from "@/lib/firestore/relatorios";
 import { getSchedules, getSchedulesByTeam } from "@/lib/firestore/schedules";
 import { getTeams, getTeamsByLeader } from "@/lib/firestore/teams";
@@ -115,9 +116,11 @@ export default function HistoricoPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Histórico</h1>
-        <p className="text-gray-500 text-sm">Todos os relatórios enviados</p>
+        <h1 className="text-xl font-bold text-gray-900">Relatórios</h1>
+        <p className="text-gray-500 text-sm">Histórico de relatórios enviados</p>
       </div>
+
+      <ReportTabs />
 
       {/* Totais */}
       <div className="grid grid-cols-3 gap-3">
