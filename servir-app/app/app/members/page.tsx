@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Pencil, Trash2, Phone, Search, LayoutGrid, List, Cake, Crown, Shield, User, Camera, Lock, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Phone, Search, LayoutGrid, List, Cake, Crown, Shield, User, Camera, Lock, Check, Bell, BellOff } from "lucide-react";
+import { requestNotificationPermission, isNotificationGranted } from "@/lib/notifications";
 
 const FUNCOES: Funcao[] = ["Coordenador", "Líder", "Co-líder", "Voluntário"];
 const FUNCAO_COLORS: Record<Funcao, string> = {
@@ -90,6 +91,23 @@ export default function MembersPage() {
   const [profMsg, setProfMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [pwdMsg, setPwdMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [notifMsg, setNotifMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    setNotifEnabled(isNotificationGranted());
+  }, [profileOpen]);
+
+  async function handleEnableNotifications() {
+    if (!appUser) return;
+    setNotifBusy(true);
+    setNotifMsg(null);
+    const r = await requestNotificationPermission(appUser.uid);
+    setNotifMsg({ ok: r.ok, text: r.message });
+    if (r.ok) setNotifEnabled(true);
+    setNotifBusy(false);
+  }
 
   const isAdmin = appUser?.role === "admin" || appUser?.funcao === "Coordenador";
   const isLeader = isAdmin || appUser?.funcao === "Líder" || appUser?.funcao === "Co-líder";
@@ -444,6 +462,39 @@ export default function MembersPage() {
             <Button onClick={handleSaveProfile} disabled={savingProfile} className="w-full">
               {savingProfile ? "Salvando..." : "Salvar Perfil"}
             </Button>
+          </div>
+
+          {/* Notificações Push */}
+          <div className="pt-4 border-t border-gray-100 space-y-3">
+            <div className="flex items-center gap-2">
+              <Bell size={14} className="text-gray-500" />
+              <p className="font-semibold text-gray-900 text-sm">Notificações</p>
+            </div>
+            <div className={`p-3 rounded-xl border ${notifEnabled ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+              <div className="flex items-start gap-2">
+                {notifEnabled ? <Bell size={14} className="text-green-600 mt-0.5" /> : <BellOff size={14} className="text-gray-400 mt-0.5" />}
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${notifEnabled ? "text-green-700" : "text-gray-700"}`}>
+                    {notifEnabled ? "Notificações ativas" : "Notificações desativadas"}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {notifEnabled
+                      ? "Você receberá alertas de escalas, substituições e avisos."
+                      : "Ative para receber alertas no seu celular."}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {notifMsg && (
+              <div className={`text-sm p-2 rounded-lg ${notifMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                {notifMsg.text}
+              </div>
+            )}
+            {!notifEnabled && (
+              <Button onClick={handleEnableNotifications} disabled={notifBusy} variant="secondary" className="w-full">
+                <Bell size={14} /> {notifBusy ? "Ativando..." : "Ativar notificações"}
+              </Button>
+            )}
           </div>
 
           <div className="pt-4 border-t border-gray-100 space-y-3">
