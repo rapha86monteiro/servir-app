@@ -13,6 +13,8 @@ import {
   ChurchIcon,
   ClipboardCheck,
   History,
+  Calendar,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,9 +27,11 @@ const navItems = [
   { href: "/app/schedules", label: "Escalas", icon: ClipboardList, adminOnly: false },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, adminOnly: false },
   { href: "/app/historico", label: "Histórico", icon: History, adminOnly: false },
+  { href: "/app/calendario", label: "Calendário", icon: Calendar, adminOnly: false },
   { href: "/app/forms", label: "Formulários", icon: FileText, adminOnly: false },
   { href: "/app/teams", label: "Equipes", icon: Users, adminOnly: true },
   { href: "/app/services", label: "Cultos", icon: CalendarDays, adminOnly: true },
+  { href: "/app/lideres", label: "Líderes", icon: UserCog, adminOnly: true },
 ];
 
 export function Sidebar() {
