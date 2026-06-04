@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Input";
-import { Plus, Trash2, Share2, Copy, X, Search, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Share2, Copy, X, Search, ChevronDown, CopyPlus, ArrowLeftRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 
@@ -55,6 +55,12 @@ export default function SchedulesPage() {
   const [memberTeamFilter, setMemberTeamFilter] = useState("");
   // Equipes para o filtro: admin vê todas, líder também (para escalar de outras equipes)
   const [allTeams, setAllTeams] = useState<Team[]>([]);
+  // Copiar escala
+  const [copyModal, setCopyModal] = useState(false);
+  const [copyServiceId, setCopyServiceId] = useState("");
+  // Trocar voluntários
+  const [swapModal, setSwapModal] = useState(false);
+  const [swapA, setSwapA] = useState<{ position: string; memberId: string } | null>(null);
   const [newServiceId, setNewServiceId] = useState("");
   const [newTeamId, setNewTeamId] = useState("");
   const [copied, setCopied] = useState(false);
@@ -118,6 +124,68 @@ export default function SchedulesPage() {
     await deleteSchedule(id);
     setSelected(null);
     load();
+  }
+
+  // Copia a escala atual para outro culto (zera confirmações)
+  async function handleCopy() {
+    if (!selected || !copyServiceId) return;
+    const service = services.find((s) => s.id === copyServiceId)!;
+
+    // Duplica posições resetando confirmação
+    const novasPositions: PositionSlots = {};
+    POSITIONS.forEach((p) => {
+      const slots = selected.positions?.[p] ?? [];
+      novasPositions[p] = slots.map((s) => ({
+        memberId: s.memberId,
+        memberName: s.memberName,
+        teamName: s.teamName,
+        confirmed: null,
+        justification: "",
+        needsSubstitute: false,
+      }));
+    });
+
+    const sched = await createSchedule({
+      serviceId: copyServiceId,
+      serviceTitle: service.title,
+      serviceDate: service.date,
+      serviceTurno: service.turno,
+      teamId: selected.teamId,
+      teamName: selected.teamName,
+      leaderId: appUser?.uid ?? "admin",
+      positions: novasPositions,
+      publicToken: uuidv4(),
+      createdAt: new Date().toISOString(),
+    });
+    setCopyModal(false);
+    setCopyServiceId("");
+    await load();
+    setSelected(sched);
+    alert("Escala copiada! As confirmações foram zeradas para o novo culto.");
+  }
+
+  // Troca duas pessoas de posição
+  async function doSwap(b: { position: string; memberId: string }) {
+    if (!selected || !swapA) return;
+    const positions: PositionSlots = JSON.parse(JSON.stringify(selected.positions));
+    const slotA = positions[swapA.position]?.find((s) => s.memberId === swapA.memberId);
+    const slotB = positions[b.position]?.find((s) => s.memberId === b.memberId);
+    if (!slotA || !slotB) { setSwapA(null); return; }
+
+    // Remove ambos das posições atuais
+    positions[swapA.position] = positions[swapA.position].filter((s) => s.memberId !== swapA.memberId);
+    positions[b.position] = positions[b.position].filter((s) => s.memberId !== b.memberId);
+
+    // Adiciona trocado
+    positions[b.position].push(slotA);
+    positions[swapA.position].push(slotB);
+
+    await updateSchedulePositions(selected.id, positions);
+    const updated = { ...selected, positions };
+    setSelected(updated);
+    setSchedules((prev) => prev.map((s) => s.id === selected.id ? updated : s));
+    setSwapA(null);
+    setSwapModal(false);
   }
 
   async function addMemberToPosition(position: string, member: Member) {
@@ -299,6 +367,26 @@ export default function SchedulesPage() {
             </div>
           )}
 
+          {/* Ações extras: copiar e trocar */}
+          {selected && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setCopyServiceId(""); setCopyModal(true); }}
+                className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                <CopyPlus size={15} /> Copiar escala
+              </button>
+              {totalEscalados >= 2 && (
+                <button
+                  onClick={() => { setSwapA(null); setSwapModal(true); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeftRight size={15} /> Trocar pessoas
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Termômetro da escala */}
           {selected && totalEscalados > 0 && (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -386,6 +474,72 @@ export default function SchedulesPage() {
           )}
         </>
       )}
+
+      {/* Modal copiar escala */}
+      <Modal open={copyModal} onClose={() => setCopyModal(false)} title="Copiar Escala" size="sm">
+        <div className="space-y-4">
+          <div className="bg-blue-50 rounded-xl p-3 text-sm text-blue-700">
+            Copia todas as pessoas desta escala (<strong>{selected?.teamName}</strong>) para outro culto. As confirmações serão zeradas.
+          </div>
+          <Select label="Culto de destino" value={copyServiceId} onChange={(e) => setCopyServiceId(e.target.value)}>
+            <option value="">Selecione o culto</option>
+            {services
+              .filter((s) => s.id !== selected?.serviceId)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title} — {formatDate(s.date)} ({s.turno})
+                </option>
+              ))}
+          </Select>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="secondary" onClick={() => setCopyModal(false)}>Cancelar</Button>
+            <Button onClick={handleCopy} disabled={!copyServiceId}>Copiar</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal trocar pessoas */}
+      <Modal open={swapModal} onClose={() => { setSwapModal(false); setSwapA(null); }} title="Trocar Pessoas de Posição" size="sm">
+        <div className="space-y-3">
+          <p className="text-xs text-gray-500">
+            {!swapA ? "1️⃣ Toque na primeira pessoa" : "2️⃣ Agora toque na pessoa para trocar de lugar"}
+          </p>
+          {swapA && (
+            <div className="bg-blue-50 rounded-lg p-2 text-sm text-blue-700 flex items-center justify-between">
+              <span>Selecionado: <strong>{selected?.positions[swapA.position]?.find((s) => s.memberId === swapA.memberId)?.memberName}</strong> ({swapA.position})</span>
+              <button onClick={() => setSwapA(null)} className="text-xs underline">trocar</button>
+            </div>
+          )}
+          <div className="max-h-80 overflow-y-auto space-y-1">
+            {selected && POSITIONS.map((position) => {
+              const slots = selected.positions?.[position] ?? [];
+              if (slots.length === 0) return null;
+              return (
+                <div key={position}>
+                  <p className="text-xs font-semibold text-gray-400 px-1 py-1">{position}</p>
+                  {slots.map((slot) => {
+                    const isSelectedA = swapA?.position === position && swapA?.memberId === slot.memberId;
+                    return (
+                      <button
+                        key={slot.memberId}
+                        onClick={() => {
+                          if (!swapA) setSwapA({ position, memberId: slot.memberId });
+                          else if (isSelectedA) setSwapA(null);
+                          else doSwap({ position, memberId: slot.memberId });
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${isSelectedA ? "bg-blue-100 ring-1 ring-blue-400" : "hover:bg-gray-50"}`}
+                      >
+                        <span className="font-medium text-gray-800">{slot.memberName}</span>
+                        <span className="text-xs text-gray-400 ml-2">{slot.teamName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal nova escala */}
       <Modal open={newModal} onClose={() => setNewModal(false)} title="Nova Escala" size="sm">
