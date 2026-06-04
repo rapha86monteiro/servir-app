@@ -11,12 +11,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
-const TEAM_NAMES = [
-  "Estacionamento","Portão","Hall de Entrada","Recepção",
-  "Templo","Frente","Diretor de Culto","Banheiro",
-  "Mezanino","Oferta","Apoio e Limpeza","Gabinete",
-];
-
 export default function TeamsPage() {
   const { appUser } = useAuth();
   const router = useRouter();
@@ -178,23 +172,16 @@ export default function TeamsPage() {
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? "Editar Equipe" : "Nova Equipe"} size="sm">
         <div className="space-y-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Equipe predefinida</label>
-            <select
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Selecione...</option>
-              {TEAM_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
           <Input
-            label="Ou nome personalizado"
+            label="Nome da equipe"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Frente Externa"
+            placeholder="Ex: ASER, LEVI, JUDA, BENJAMIM..."
+            autoFocus
           />
+          <p className="text-xs text-gray-400">
+            As equipes representam os grupos que servem em cada culto (não as posições).
+          </p>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave}>Salvar</Button>
