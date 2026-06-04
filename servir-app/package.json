@@ -18,7 +18,8 @@
     "uuid": "^10.0.0",
     "lucide-react": "^0.400.0",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.3.0"
+    "tailwind-merge": "^2.3.0",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "typescript": "^5",
