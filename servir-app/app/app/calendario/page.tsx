@@ -132,19 +132,37 @@ export default function CalendarioPage() {
     setExporting(true);
     try {
       const html2canvas = (await import("html2canvas")).default;
-      const node = gridRef.current;
-      const canvas = await html2canvas(node, {
+      const source = gridRef.current;
+
+      // Cria clone off-screen com largura fixa para evitar corte
+      const clone = source.cloneNode(true) as HTMLElement;
+      clone.style.position = "absolute";
+      clone.style.left = "-99999px";
+      clone.style.top = "0";
+      clone.style.width = "1400px";
+      clone.style.maxWidth = "none";
+      clone.style.padding = "32px";
+      clone.style.backgroundColor = "#ffffff";
+      document.body.appendChild(clone);
+
+      // Aguarda renderização
+      await new Promise((r) => setTimeout(r, 200));
+
+      const canvas = await html2canvas(clone, {
         backgroundColor: "#ffffff",
-        scale: 2,
+        scale: 3, // alta resolução
         useCORS: true,
-        width: node.scrollWidth,
-        height: node.scrollHeight,
-        windowWidth: node.scrollWidth,
-        windowHeight: node.scrollHeight,
+        logging: false,
+        width: clone.scrollWidth,
+        height: clone.scrollHeight,
+        windowWidth: clone.scrollWidth,
+        windowHeight: clone.scrollHeight,
       });
 
+      document.body.removeChild(clone);
+
       canvas.toBlob(async (blob) => {
-        if (!blob) return;
+        if (!blob) { setExporting(false); return; }
         const file = new File([blob], `calendario-${MONTH_NAMES[month]}-${year}.png`, { type: "image/png" });
 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -164,7 +182,7 @@ export default function CalendarioPage() {
           a.href = url; a.download = file.name; a.click();
         }
         setExporting(false);
-      }, "image/png");
+      }, "image/png", 1.0);
     } catch (err) {
       alert("Erro: " + String(err));
       setExporting(false);
