@@ -19,13 +19,13 @@ import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 
 const navItems = [
-  { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
-  { href: "/app/teams", label: "Equipes", icon: Users, adminOnly: true },
+  { href: "/app/dashboard", label: "Início", icon: LayoutDashboard, adminOnly: false },
   { href: "/app/members", label: "Membros", icon: UserCheck, adminOnly: false },
-  { href: "/app/services", label: "Cultos", icon: CalendarDays, adminOnly: true },
   { href: "/app/schedules", label: "Escalas", icon: ClipboardList, adminOnly: false },
   { href: "/app/relatorio", label: "Relatórios", icon: ClipboardCheck, adminOnly: false },
   { href: "/app/forms", label: "Formulários", icon: FileText, adminOnly: false },
+  { href: "/app/teams", label: "Equipes", icon: Users, adminOnly: true },
+  { href: "/app/services", label: "Cultos", icon: CalendarDays, adminOnly: true },
 ];
 
 export function Sidebar() {
