@@ -38,11 +38,13 @@ export default function DashboardPage() {
   }, [appUser]);
 
   const pendingConfirmations = schedules.reduce((acc, s) => {
-    return acc + s.slots.filter((sl) => sl.confirmed === null).length;
+    if (!s.positions) return acc;
+    return acc + Object.values(s.positions).flat().filter((sl) => sl.confirmed === null).length;
   }, 0);
 
   const confirmedSlots = schedules.reduce((acc, s) => {
-    return acc + s.slots.filter((sl) => sl.confirmed === true).length;
+    if (!s.positions) return acc;
+    return acc + Object.values(s.positions).flat().filter((sl) => sl.confirmed === true).length;
   }, 0);
 
   const stats = [
@@ -111,7 +113,8 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-400">{s.serviceTitle}</p>
                   </div>
                   <span className="text-xs text-gray-500">
-                    {s.slots.filter((sl) => sl.confirmed).length}/{s.slots.length} ✓
+                    {s.positions ? Object.values(s.positions).flat().filter((sl) => sl.confirmed).length : 0}/
+                    {s.positions ? Object.values(s.positions).flat().length : 0} ✓
                   </span>
                 </li>
               ))}
