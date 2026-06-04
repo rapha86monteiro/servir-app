@@ -1,58 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { query, collection, where, getDocs } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { collection, getDocs, doc, setDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc as firestoreDoc, setDoc } from "firebase/firestore";
-import { Input } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 import Image from "next/image";
-import type { Team } from "@/lib/types";
+import type { Team, Funcao } from "@/lib/types";
+import { Check } from "lucide-react";
+
+const FUNCOES: Funcao[] = ["Coordenador", "Líder", "Co-líder", "Voluntário"];
 
 export default function ConvitePage() {
-  const { token } = useParams<{ token: string }>();
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const [team, setTeam] = useState<Team | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isLeader, setIsLeader] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [form, setForm] = useState({
+    name: "", email: "", password: "", confirmPassword: "",
+    phone: "", aniversario: "",
+    funcao: "Voluntário" as Funcao, teamId: "",
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
   useEffect(() => {
     async function load() {
-      // Tenta buscar como link de líder primeiro
-      const tipo = searchParams.get("tipo");
-      const queryField = tipo === "lider" ? "leaderInviteToken" : "inviteToken";
-
-      let q = query(collection(db, "teams"), where(queryField, "==", token));
-      let snap = await getDocs(q);
-
-      if (snap.empty) {
-        // Tenta o outro tipo
-        const otherField = tipo === "lider" ? "inviteToken" : "leaderInviteToken";
-        q = query(collection(db, "teams"), where(otherField, "==", token));
-        snap = await getDocs(q);
-        if (!snap.empty) setIsLeader(otherField === "leaderInviteToken");
-      } else {
-        setIsLeader(queryField === "leaderInviteToken");
-      }
-
-      if (!snap.empty) {
-        setTeam({ id: snap.docs[0].id, ...snap.docs[0].data() } as Team);
-      }
+      const snap = await getDocs(collection(db, "teams"));
+      const t = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Team));
+      t.sort((a, b) => a.name.localeCompare(b.name));
+      setTeams(t);
       setLoading(false);
     }
     load();
-  }, [token, searchParams]);
+  }, []);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) {
-      setError("Preencha todos os campos.");
+      setError("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    if (form.funcao !== "Coordenador" && !form.teamId) {
+      setError("Selecione uma equipe.");
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -67,21 +58,27 @@ export default function ConvitePage() {
     setError("");
     try {
       const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
-      await setDoc(firestoreDoc(db, "users", cred.user.uid), {
+      const role = form.funcao === "Coordenador" || form.funcao === "Líder" || form.funcao === "Co-líder" ? "leader" : "member";
+
+      await setDoc(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
         name: form.name,
         email: form.email,
-        role: isLeader ? "leader" : "member",
-        funcao: isLeader ? "Líder" : "Voluntário",
-        teamIds: [team!.id],
+        role,
+        funcao: form.funcao,
+        teamIds: form.teamId ? [form.teamId] : [],
+        phone: form.phone,
+        aniversario: form.aniversario,
+        status: "pending",
+        createdAt: new Date().toISOString(),
       });
+
       setDone(true);
-      setTimeout(() => router.push("/login"), 2000);
     } catch (err: any) {
       if (err.code === "auth/email-already-in-use") {
         setError("Este e-mail já está cadastrado.");
       } else {
-        setError("Erro ao criar conta: " + err.message);
+        setError("Erro: " + err.message);
       }
     }
     setSaving(false);
@@ -95,32 +92,33 @@ export default function ConvitePage() {
     );
   }
 
-  if (!team) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
-          <p className="text-2xl mb-2">❌</p>
-          <p className="font-bold text-gray-900">Link inválido</p>
-          <p className="text-gray-400 text-sm mt-1">Este link de convite não é válido ou expirou.</p>
-        </div>
-      </div>
-    );
-  }
-
   if (done) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
         <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
-          <p className="text-4xl mb-3">✅</p>
-          <p className="font-bold text-gray-900 text-lg">Conta criada!</p>
-          <p className="text-gray-400 text-sm mt-1">Redirecionando para o login...</p>
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check size={32} className="text-amber-600" />
+          </div>
+          <p className="font-bold text-gray-900 text-lg mb-2">Cadastro enviado!</p>
+          <p className="text-gray-500 text-sm mb-4">
+            Sua conta foi criada e está aguardando aprovação do coordenador.
+            Você receberá acesso assim que for aprovado.
+          </p>
+          <button
+            onClick={() => router.push("/login")}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Ir para o login
+          </button>
         </div>
       </div>
     );
   }
 
+  const needsTeam = form.funcao !== "Coordenador";
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0a] p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0a] p-4 py-8">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-6">
           <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-4 overflow-hidden shadow-2xl">
@@ -130,32 +128,42 @@ export default function ConvitePage() {
           <p className="text-white/40 text-xs tracking-widest mt-0.5">SERVIR</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-2xl space-y-4">
-          <div className="text-center pb-2 border-b border-gray-100">
-            <p className="font-bold text-gray-900">
-              Convite para {isLeader ? "Liderar" : ""} a equipe
-            </p>
-            <p className="text-lg font-bold text-black mt-0.5">{team.name}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-block mt-1 ${isLeader ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
-              {isLeader ? "👑 Líder" : "🙌 Voluntário"}
-            </span>
-            <p className="text-gray-400 text-xs mt-2">Crie sua conta para acessar o app</p>
+        <div className="bg-white rounded-2xl p-6 shadow-2xl space-y-3">
+          <div className="text-center pb-3 border-b border-gray-100">
+            <p className="font-bold text-gray-900">Solicitar acesso</p>
+            <p className="text-gray-400 text-xs mt-1">Preencha os dados. Você terá acesso após aprovação.</p>
           </div>
 
           <form onSubmit={handleRegister} className="space-y-3">
-            <Input label="Nome completo" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Seu nome" required />
-            <Input label="E-mail" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="seu@email.com" required />
-            <Input label="Senha" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Mínimo 6 caracteres" required />
-            <Input label="Confirmar senha" type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} placeholder="Repita a senha" required />
+            <Input label="Nome completo *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <Input label="E-mail *" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <Input label="Telefone / WhatsApp" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="(21) 99999-9999" />
+            <Input label="Aniversário" type="date" value={form.aniversario} onChange={(e) => setForm({ ...form, aniversario: e.target.value })} />
+
+            <Select label="Função *" value={form.funcao} onChange={(e) => setForm({ ...form, funcao: e.target.value as Funcao })}>
+              {FUNCOES.map((f) => <option key={f} value={f}>{f}</option>)}
+            </Select>
+
+            {needsTeam && (
+              <Select label="Equipe *" value={form.teamId} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
+                <option value="">Selecione sua equipe</option>
+                {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </Select>
+            )}
+
+            <Input label="Senha *" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Mínimo 6 caracteres" required />
+            <Input label="Confirmar senha *" type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} required />
+
             {error && (
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
             )}
+
             <button
               type="submit"
               disabled={saving}
               className="w-full bg-[#0a0a0a] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
             >
-              {saving ? "Criando conta..." : "Criar conta"}
+              {saving ? "Enviando..." : "Solicitar acesso"}
             </button>
           </form>
         </div>
