@@ -77,7 +77,19 @@ export async function getProfilePermissions(): Promise<AllProfilesPermissions> {
   try {
     const snap = await getDoc(doc(db, "config", "permissions"));
     if (snap.exists()) {
-      return { ...DEFAULT_PERMISSIONS, ...(snap.data() as AllProfilesPermissions) };
+      const saved = snap.data() as Partial<AllProfilesPermissions>;
+      // Merge profundo: garante que toda função tenha todos os módulos
+      const result = {} as AllProfilesPermissions;
+      (Object.keys(DEFAULT_PERMISSIONS) as Funcao[]).forEach((funcao) => {
+        const defaultPerms = DEFAULT_PERMISSIONS[funcao];
+        const savedPerms = saved[funcao] ?? {};
+        const merged = {} as any;
+        MODULES.forEach(({ key }) => {
+          merged[key] = (savedPerms as any)[key] ?? defaultPerms[key] ?? { view: false, edit: false };
+        });
+        result[funcao] = merged;
+      });
+      return result;
     }
   } catch {}
   return DEFAULT_PERMISSIONS;
