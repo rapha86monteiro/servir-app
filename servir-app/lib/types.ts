@@ -15,11 +15,15 @@ export interface Team {
   memberIds: string[];
 }
 
+export type Funcao = "Líder" | "Co-líder" | "Voluntário";
+
 export interface Member {
   id: string;
   name: string;
   phone: string;
   teamId: string;
+  funcao: Funcao;
+  aniversario: string;
   active: boolean;
 }
 
