@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Pencil, Trash2, Phone, Search, LayoutGrid, List, Cake, Crown, Shield, User, Camera, Lock, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Phone, Search, LayoutGrid, List, Cake, Crown, Shield, User, Camera, Lock, Check, Download } from "lucide-react";
 
 const FUNCOES: Funcao[] = ["Coordenador", "Líder", "Co-líder", "Voluntário"];
 const FUNCAO_COLORS: Record<Funcao, string> = {
@@ -161,6 +161,33 @@ export default function MembersPage() {
     load();
   }
 
+  function exportarExcel() {
+    // Gera CSV (abre no Excel) com BOM para acentos
+    const header = ["Nome", "Equipe", "Função", "Telefone", "Aniversário", "E-mail", "Status"];
+    const rows = filtered.map((m) => {
+      const team = teams.find((t) => t.id === m.teamId);
+      return [
+        m.name,
+        team?.name ?? "",
+        m.funcao ?? "Voluntário",
+        m.phone ?? "",
+        m.aniversario ?? "",
+        m.email ?? "",
+        m.active ? "Ativo" : "Inativo",
+      ];
+    });
+    const csv = [header, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `membros-belem-servir-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // Perfil
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -240,9 +267,14 @@ export default function MembersPage() {
           <h1 className="text-xl font-bold text-gray-900">Membros</h1>
           <p className="text-gray-500 text-sm">{members.length} membros cadastrados</p>
         </div>
-        {isLeader && (
-          <Button onClick={openCreate} size="sm"><Plus size={15} /> Novo</Button>
-        )}
+        <div className="flex gap-2">
+          {isLeader && (
+            <Button onClick={exportarExcel} size="sm" variant="secondary"><Download size={15} /> Exportar</Button>
+          )}
+          {isLeader && (
+            <Button onClick={openCreate} size="sm"><Plus size={15} /> Novo</Button>
+          )}
+        </div>
       </div>
 
       {/* Meu Perfil */}
