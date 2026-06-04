@@ -6,10 +6,12 @@ import type { Team } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { Plus, Pencil, Trash2, Users, Link2, Copy, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Copy, Check, Crown, UserPlus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
+
+type LinkType = "member" | "leader";
 
 export default function TeamsPage() {
   const { appUser } = useAuth();
@@ -21,14 +23,18 @@ export default function TeamsPage() {
   const [name, setName] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
+  const isAdmin = appUser?.role === "admin" || appUser?.funcao === "Coordenador";
+
   useEffect(() => {
-    if (appUser && appUser.role !== "admin") router.push("/app/dashboard");
+    if (appUser && !isAdmin) router.push("/app/dashboard");
     load();
   }, [appUser]);
 
   async function load() {
     setLoading(true);
-    setTeams(await getTeams());
+    const t = await getTeams();
+    t.sort((a, b) => a.name.localeCompare(b.name));
+    setTeams(t);
     setLoading(false);
   }
 
@@ -49,7 +55,13 @@ export default function TeamsPage() {
     if (editing) {
       await updateTeam(editing.id, { name });
     } else {
-      await createTeam({ name, leaderIds: [], memberIds: [], inviteToken: uuidv4() });
+      await createTeam({
+        name,
+        leaderIds: [],
+        memberIds: [],
+        inviteToken: uuidv4(),
+        leaderInviteToken: uuidv4(),
+      });
     }
     setModalOpen(false);
     load();
@@ -61,104 +73,146 @@ export default function TeamsPage() {
     load();
   }
 
-  async function regenerateToken(team: Team) {
+  async function regenerateToken(team: Team, type: LinkType) {
     if (!confirm("Gerar novo link? O link anterior deixará de funcionar.")) return;
+    if (type === "leader") {
+      await updateTeam(team.id, { leaderInviteToken: uuidv4() });
+    } else {
+      await updateTeam(team.id, { inviteToken: uuidv4() });
+    }
+    load();
+  }
+
+  async function ensureLeaderToken(team: Team) {
+    await updateTeam(team.id, { leaderInviteToken: uuidv4() });
+    load();
+  }
+  async function ensureMemberToken(team: Team) {
     await updateTeam(team.id, { inviteToken: uuidv4() });
     load();
   }
 
-  function getInviteUrl(token: string) {
-    return `${window.location.origin}/convite/${token}`;
+  function getInviteUrl(token: string, type: LinkType) {
+    const base = window.location.origin;
+    return type === "leader"
+      ? `${base}/convite/${token}?tipo=lider`
+      : `${base}/convite/${token}`;
   }
 
-  async function copyInviteLink(token: string) {
-    await navigator.clipboard.writeText(getInviteUrl(token));
-    setCopied(token);
+  async function copyInviteLink(token: string, type: LinkType) {
+    await navigator.clipboard.writeText(getInviteUrl(token, type));
+    setCopied(token + type);
     setTimeout(() => setCopied(null), 2000);
   }
 
-  async function shareWhatsApp(team: Team) {
-    if (!team.inviteToken) return;
-    const url = getInviteUrl(team.inviteToken);
-    const text = `Olá! Você foi convidado para a equipe *${team.name}* no app do Departamento Servir da Belém Church.\n\nCrie sua conta pelo link abaixo:\n${url}`;
+  async function shareWhatsApp(team: Team, token: string, type: LinkType) {
+    const url = getInviteUrl(token, type);
+    const text = type === "leader"
+      ? `Olá! Você foi convidado para ser *líder* da equipe *${team.name}* no app do Departamento Servir da Belém Church.\n\nCrie sua conta de líder pelo link:\n${url}`
+      : `Olá! Você foi convidado para a equipe *${team.name}* no app do Departamento Servir da Belém Church.\n\nCrie sua conta pelo link:\n${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Equipes</h1>
-          <p className="text-gray-500 text-sm mt-1">Gerencie equipes e links de convite</p>
+          <h1 className="text-xl font-bold text-gray-900">Equipes</h1>
+          <p className="text-gray-500 text-sm">{teams.length} equipes · Links de convite</p>
         </div>
-        <Button onClick={openCreate}><Plus size={16} /> Nova Equipe</Button>
+        <Button onClick={openCreate} size="sm"><Plus size={15} /> Nova</Button>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent" />
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-black" />
         </div>
       ) : (
         <div className="space-y-3">
           {teams.map((team) => (
-            <div key={team.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <div key={team.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <Users size={18} className="text-gray-600" />
+                  <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                    {team.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{team.name}</p>
+                    <p className="font-bold text-gray-900">{team.name}</p>
                     <p className="text-xs text-gray-400">{team.memberIds.length} membros</p>
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => openEdit(team)} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors">
-                    <Pencil size={15} />
+                  <button onClick={() => openEdit(team)} className="p-1.5 text-gray-400 hover:text-blue-600">
+                    <Pencil size={14} />
                   </button>
-                  <button onClick={() => handleDelete(team.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition-colors">
-                    <Trash2 size={15} />
+                  <button onClick={() => handleDelete(team.id)} className="p-1.5 text-gray-400 hover:text-red-600">
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
 
-              {/* Link de convite */}
-              <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
-                  <Link2 size={12} /> Link de convite para membros
+              {/* Link Líder */}
+              <div className="bg-blue-50 rounded-xl p-3 mb-2">
+                <p className="text-xs font-bold text-blue-700 mb-1.5 flex items-center gap-1">
+                  <Crown size={11} /> Link para Líder/Co-líder
                 </p>
-                {team.inviteToken ? (
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-400 break-all font-mono bg-white rounded-lg p-2 border border-gray-200">
-                      {typeof window !== "undefined" ? getInviteUrl(team.inviteToken) : "..."}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => copyInviteLink(team.inviteToken!)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        {copied === team.inviteToken ? <><Check size={12} className="text-green-500" /> Copiado!</> : <><Copy size={12} /> Copiar</>}
-                      </button>
-                      <button
-                        onClick={() => shareWhatsApp(team)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                      >
-                        📱 WhatsApp
-                      </button>
-                      <button
-                        onClick={() => regenerateToken(team)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
-                      >
-                        🔄 Novo link
-                      </button>
-                    </div>
+                {team.leaderInviteToken ? (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => copyInviteLink(team.leaderInviteToken!, "leader")}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      {copied === team.leaderInviteToken + "leader" ? <><Check size={11} className="text-green-500" /> Copiado</> : <><Copy size={11} /> Copiar</>}
+                    </button>
+                    <button
+                      onClick={() => shareWhatsApp(team, team.leaderInviteToken!, "leader")}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                      📱 WhatsApp
+                    </button>
+                    <button
+                      onClick={() => regenerateToken(team, "leader")}
+                      className="text-xs text-blue-500 hover:underline"
+                    >
+                      🔄 Novo
+                    </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => updateTeam(team.id, { inviteToken: uuidv4() }).then(load)}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    + Gerar link de convite
+                  <button onClick={() => ensureLeaderToken(team)} className="text-xs text-blue-600 hover:underline">
+                    + Gerar link
+                  </button>
+                )}
+              </div>
+
+              {/* Link Membro */}
+              <div className="bg-green-50 rounded-xl p-3">
+                <p className="text-xs font-bold text-green-700 mb-1.5 flex items-center gap-1">
+                  <UserPlus size={11} /> Link para Voluntário
+                </p>
+                {team.inviteToken ? (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => copyInviteLink(team.inviteToken!, "member")}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-white border border-green-200 rounded-lg hover:bg-green-50 transition-colors"
+                    >
+                      {copied === team.inviteToken + "member" ? <><Check size={11} className="text-green-500" /> Copiado</> : <><Copy size={11} /> Copiar</>}
+                    </button>
+                    <button
+                      onClick={() => shareWhatsApp(team, team.inviteToken!, "member")}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                      📱 WhatsApp
+                    </button>
+                    <button
+                      onClick={() => regenerateToken(team, "member")}
+                      className="text-xs text-green-600 hover:underline"
+                    >
+                      🔄 Novo
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => ensureMemberToken(team)} className="text-xs text-green-600 hover:underline">
+                    + Gerar link
                   </button>
                 )}
               </div>
@@ -180,7 +234,7 @@ export default function TeamsPage() {
             autoFocus
           />
           <p className="text-xs text-gray-400">
-            As equipes representam os grupos que servem em cada culto (não as posições).
+            Cada equipe terá dois links de convite: um para líderes e outro para voluntários.
           </p>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
