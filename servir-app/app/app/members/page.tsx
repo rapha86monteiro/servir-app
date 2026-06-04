@@ -190,15 +190,15 @@ export default function MembersPage() {
     setProfMsg(null);
     try {
       await updateDoc(doc(db, "users", appUser.uid), {
-        name: profile.name,
-        phone: profile.phone,
-        aniversario: profile.aniversario,
-        photo: profile.photo,
+        name: profile.name ?? "",
+        phone: profile.phone ?? "",
+        aniversario: profile.aniversario ?? "",
+        photo: profile.photo ?? "",
       });
       setProfMsg({ type: "success", text: "Perfil atualizado!" });
       setTimeout(() => setProfMsg(null), 3000);
-    } catch (err) {
-      setProfMsg({ type: "error", text: "Erro: " + String(err) });
+    } catch (err: any) {
+      setProfMsg({ type: "error", text: "Erro: " + (err?.message ?? String(err)) });
     }
     setSavingProfile(false);
   }
