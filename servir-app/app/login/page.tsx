@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth";
+import { signIn, getUserProfile, signOut } from "@/lib/auth";
 import { Input } from "@/components/ui/Input";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +20,19 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const cred = await signIn(email, password);
+      const profile = await getUserProfile(cred.user.uid);
+      if (profile && (profile as any).status === "pending") {
+        await signOut();
+        setError("⏳ Sua conta ainda está aguardando aprovação do coordenador.");
+        setLoading(false);
+        return;
+      }
+      if (profile && (profile as any).status === "rejected") {
+        await signOut();
+        setError("❌ Seu cadastro não foi aprovado. Entre em contato com o coordenador.");
+        setLoading(false);
+        return;
+      }
       const token = await cred.user.getIdToken();
       document.cookie = `firebase-token=${token}; path=/; max-age=3600`;
       router.push("/app/dashboard");
@@ -73,6 +87,13 @@ export default function LoginPage() {
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
+
+          <div className="text-center pt-2 border-t border-gray-100">
+            <p className="text-xs text-gray-400">Ainda não tem cadastro?</p>
+            <Link href="/convite" className="text-sm text-black font-semibold hover:underline">
+              Solicitar acesso
+            </Link>
+          </div>
         </form>
       </div>
     </div>
