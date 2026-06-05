@@ -9,6 +9,7 @@ export interface Aviso {
   mensagem: string;
   autor: string;
   fixado: boolean;
+  imagem?: string;
   createdAt: string;
 }
 
