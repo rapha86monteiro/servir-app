@@ -1,12 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { notify } from "@/lib/notify";
 import { getAvisos, createAviso, toggleFixarAviso, deleteAviso, type Aviso } from "@/lib/firestore/avisos";
-import { Megaphone, Check, Pin, PinOff, Trash2, Plus } from "lucide-react";
+import { Megaphone, Check, Pin, PinOff, Trash2, Plus, ImagePlus, X } from "lucide-react";
+
+function compressImage(file: File, maxWidth = 1000): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ratio = Math.min(maxWidth / img.width, 1);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -21,10 +41,18 @@ export default function MuralPage() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [fixar, setFixar] = useState(false);
+  const [imagem, setImagem] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = appUser?.role === "admin" || appUser?.funcao === "Coordenador";
+
+  async function handleImagem(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImagem(await compressImage(file));
+  }
 
   useEffect(() => { load(); }, []);
 
@@ -47,6 +75,7 @@ export default function MuralPage() {
         mensagem: message,
         autor: appUser?.name ?? "Coordenação",
         fixado: fixar,
+        imagem: imagem || "",
         createdAt: new Date().toISOString(),
       });
       const res = await notify(
@@ -55,7 +84,7 @@ export default function MuralPage() {
       );
       const pushInfo = res.error ? "(push não enviado)" : `${res.success ?? 0} notificados`;
       setResult({ ok: true, text: `Aviso publicado! ${pushInfo}` });
-      setTitle(""); setMessage(""); setFixar(false); setShowForm(false);
+      setTitle(""); setMessage(""); setFixar(false); setImagem(""); setShowForm(false);
       load();
     } catch (err: any) {
       setResult({ ok: false, text: "Erro: " + (err?.message ?? String(err)) });
@@ -92,6 +121,31 @@ export default function MuralPage() {
           </div>
           <Input label="Título *" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Reunião extraordinária" maxLength={60} />
           <Textarea label="Mensagem *" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Conteúdo do aviso..." rows={4} />
+
+          {/* Imagem */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Imagem (opcional)</p>
+            {imagem ? (
+              <div className="relative w-full">
+                <img src={imagem} alt="" className="w-full max-h-60 object-contain rounded-xl bg-gray-50" />
+                <button
+                  onClick={() => setImagem("")}
+                  className="absolute top-2 right-2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors"
+              >
+                <ImagePlus size={18} /> Anexar imagem
+              </button>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleImagem} className="hidden" />
+          </div>
+
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={fixar} onChange={(e) => setFixar(e.target.checked)} className="w-4 h-4 accent-black" />
             <span className="text-sm text-gray-700 flex items-center gap-1"><Pin size={13} /> Fixar no topo</span>
@@ -129,6 +183,9 @@ export default function MuralPage() {
                     <p className="font-bold text-gray-900">{a.titulo}</p>
                   </div>
                   <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{a.mensagem}</p>
+                  {a.imagem && (
+                    <img src={a.imagem} alt="" className="w-full max-h-80 object-contain rounded-xl bg-gray-50 mt-2" />
+                  )}
                   <p className="text-xs text-gray-400 mt-2">{a.autor} · {formatDateTime(a.createdAt)}</p>
                 </div>
                 {isAdmin && (
