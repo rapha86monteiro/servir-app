@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, getUserProfile, signOut } from "@/lib/auth";
+import { signIn, getUserProfile, signOut, resetPassword } from "@/lib/auth";
 import { Input } from "@/components/ui/Input";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,6 +13,31 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Reset de senha
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMsg, setResetMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [resetting, setResetting] = useState(false);
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetEmail) return;
+    setResetting(true);
+    setResetMsg(null);
+    try {
+      await resetPassword(resetEmail);
+      setResetMsg({ ok: true, text: "✅ Enviamos um link de redefinição para o seu e-mail. Verifique a caixa de entrada e o spam." });
+    } catch (err: any) {
+      if (err.code === "auth/user-not-found") {
+        setResetMsg({ ok: false, text: "E-mail não encontrado." });
+      } else if (err.code === "auth/invalid-email") {
+        setResetMsg({ ok: false, text: "E-mail inválido." });
+      } else {
+        setResetMsg({ ok: false, text: "Erro ao enviar. Tente novamente." });
+      }
+    }
+    setResetting(false);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,46 +80,91 @@ export default function LoginPage() {
           <p className="text-white/40 text-sm mt-1 tracking-widest font-medium">SERVIR</p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-2xl space-y-4">
-          <div>
-            <p className="text-gray-900 font-semibold mb-1">Acesse sua conta</p>
-            <p className="text-gray-400 text-xs">Área restrita para líderes e administradores</p>
-          </div>
-          <Input
-            label="E-mail"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="lider@belemchurch.com"
-            required
-          />
-          <Input
-            label="Senha"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-          />
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#0a0a0a] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
-          >
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
+        {showReset ? (
+          /* Form de redefinição */
+          <form onSubmit={handleReset} className="bg-white rounded-2xl p-6 shadow-2xl space-y-4">
+            <div>
+              <p className="text-gray-900 font-semibold mb-1">Redefinir senha</p>
+              <p className="text-gray-400 text-xs">Informe seu e-mail. Enviaremos um link para criar uma nova senha.</p>
+            </div>
+            <Input
+              label="E-mail"
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="seu@email.com"
+              required
+            />
+            {resetMsg && (
+              <p className={`text-sm rounded-lg px-3 py-2 ${resetMsg.ok ? "text-green-700 bg-green-50" : "text-red-600 bg-red-50"}`}>
+                {resetMsg.text}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={resetting}
+              className="w-full bg-[#0a0a0a] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
+            >
+              {resetting ? "Enviando..." : "Enviar link de redefinição"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowReset(false); setResetMsg(null); }}
+              className="w-full text-sm text-gray-500 hover:text-black"
+            >
+              ← Voltar para o login
+            </button>
+          </form>
+        ) : (
+          /* Form de login */
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-2xl space-y-4">
+            <div>
+              <p className="text-gray-900 font-semibold mb-1">Acesse sua conta</p>
+              <p className="text-gray-400 text-xs">Departamento Servir · Belém Church</p>
+            </div>
+            <Input
+              label="E-mail"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="lider@belemchurch.com"
+              required
+            />
+            <Input
+              label="Senha"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#0a0a0a] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#1a1a1a] transition-colors disabled:opacity-50"
+            >
+              {loading ? "Entrando..." : "Entrar"}
+            </button>
 
-          <div className="text-center pt-2 border-t border-gray-100">
-            <p className="text-xs text-gray-400">Ainda não tem cadastro?</p>
-            <Link href="/convite" className="text-sm text-black font-semibold hover:underline">
-              Solicitar acesso
-            </Link>
-          </div>
-        </form>
+            <button
+              type="button"
+              onClick={() => { setShowReset(true); setResetEmail(email); }}
+              className="w-full text-xs text-gray-500 hover:text-black"
+            >
+              Esqueci minha senha
+            </button>
+
+            <div className="text-center pt-2 border-t border-gray-100">
+              <p className="text-xs text-gray-400">Ainda não tem cadastro?</p>
+              <Link href="/convite" className="text-sm text-black font-semibold hover:underline">
+                Solicitar acesso
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
