@@ -9,6 +9,7 @@ import { Input, Select } from "@/components/ui/Input";
 import Image from "next/image";
 import type { Team, Funcao } from "@/lib/types";
 import { Check } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 const FUNCOES: Funcao[] = ["Coordenador", "Líder", "Co-líder", "Voluntário"];
 
@@ -131,6 +132,14 @@ export default function ConvitePage() {
         aniversario: form.aniversario,
         status: "pending",
         createdAt: new Date().toISOString(),
+      });
+
+      // Avisa coordenadores do novo cadastro pendente
+      const teamName = teams.find((t) => t.id === form.teamId)?.name ?? "";
+      notify({ target: "coordinators" }, {
+        title: "👤 Novo cadastro para aprovar",
+        message: `${capitalize(form.name.trim())} (${form.funcao}${teamName ? " · " + teamName : ""}) solicitou acesso.`,
+        type: "aprovacao", data: { url: "/app/aprovacoes" },
       });
 
       setDone(true);
