@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendNotificationToTokens, getAllUserTokens, getTokensForUsers, getTokensByMemberIds } from "@/lib/firebaseAdmin";
+import { sendNotificationToTokens, getAllUserTokens, getTokensForUsers, getTokensByMemberIds, getCoordinatorTokens } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
 
@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
 
     if (target === "all") {
       tokens = await getAllUserTokens();
+    } else if (target === "coordinators") {
+      tokens = await getCoordinatorTokens();
     } else if (target === "uids" && Array.isArray(uids)) {
       tokens = await getTokensForUsers(uids);
     } else if (target === "members" && Array.isArray(memberIds)) {
