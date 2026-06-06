@@ -90,13 +90,8 @@ export default function SchedulesPage() {
     setAllTeams(todasEquipes);
     setIndisponibilidades(indisp);
 
-    let scheds: Schedule[];
-    if (appUser.role === "admin") {
-      scheds = await getSchedules();
-    } else {
-      const all = await Promise.all(t.map((team) => getSchedulesByTeam(team.id)));
-      scheds = all.flat();
-    }
+    // Líderes e coordenadores veem todas as escalas
+    const scheds: Schedule[] = await getSchedules();
     scheds.sort((a, b) => b.serviceDate.localeCompare(a.serviceDate));
     setSchedules(scheds);
     if (scheds.length > 0) setSelected(scheds[0]);
@@ -106,7 +101,7 @@ export default function SchedulesPage() {
   async function handleCreate() {
     if (!newServiceId || !newTeamId) return;
     const service = services.find((s) => s.id === newServiceId)!;
-    const team = teams.find((t) => t.id === newTeamId)!;
+    const team = allTeams.find((t) => t.id === newTeamId)!;
     const emptyPositions: PositionSlots = {};
     POSITIONS.forEach((p) => { emptyPositions[p] = []; });
     const sched = await createSchedule({
@@ -617,7 +612,7 @@ export default function SchedulesPage() {
           </Select>
           <Select label="Equipe responsável" value={newTeamId} onChange={(e) => setNewTeamId(e.target.value)}>
             <option value="">Selecione a equipe</option>
-            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {allTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </Select>
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="secondary" onClick={() => setNewModal(false)}>Cancelar</Button>
