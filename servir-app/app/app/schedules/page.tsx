@@ -19,6 +19,7 @@ import { Select } from "@/components/ui/Input";
 import { Plus, Trash2, Share2, Copy, X, Search, ChevronDown, CopyPlus, ArrowLeftRight, UserCheck, Check } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
+import { notify } from "@/lib/notify";
 
 const TURNO_COLORS: Record<string, string> = {
   "Manhã": "bg-yellow-100 text-yellow-700",
@@ -120,6 +121,12 @@ export default function SchedulesPage() {
     setNewServiceId(""); setNewTeamId("");
     await load();
     setSelected(sched);
+    // Avisa coordenadores
+    notify({ target: "coordinators" }, {
+      title: "📋 Nova escala criada",
+      message: `${team.name} — ${service.title} (${formatDate(service.date)})`,
+      type: "escala", data: { url: "/app/schedules" },
+    });
   }
 
   async function handleDelete(id: string) {
