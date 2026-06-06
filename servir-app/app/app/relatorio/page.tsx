@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { ReportTabs } from "@/components/layout/ReportTabs";
+import { notify } from "@/lib/notify";
 import { getRelatorios, createRelatorio, deleteRelatorio } from "@/lib/firestore/relatorios";
 import { getServices } from "@/lib/firestore/services";
 import { getTeams, getTeamsByLeader } from "@/lib/firestore/teams";
@@ -108,6 +109,12 @@ export default function RelatorioPage() {
       setForm(empty);
       setShowForm(false);
       load();
+      // Avisa coordenadores
+      notify({ target: "coordinators" }, {
+        title: "📝 Novo relatório enviado",
+        message: `${team.name} — ${service.title} · ${form.presentes} presentes, ${form.ausentes} ausentes (${form.avaliacao})`,
+        type: "relatorio", data: { url: "/app/historico" },
+      });
     } catch (err) {
       alert("Erro: " + String(err));
     }
