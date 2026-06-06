@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getScheduleByToken, updateSchedulePositions } from "@/lib/firestore/schedules";
 import { createSubstituicao } from "@/lib/firestore/substituicoes";
+import { notify } from "@/lib/notify";
 import type { Schedule } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { CheckCircle2, XCircle, RefreshCw } from "lucide-react";
@@ -81,7 +82,22 @@ export default function ConfirmarPage() {
           createdAt: new Date().toISOString(),
         });
       }
+      // Avisa coordenadores do pedido de substituição
+      const slotName = slot?.memberName ?? "";
+      notify({ target: "coordinators" }, {
+        title: "🔄 Pedido de substituição",
+        message: `${slotName} não poderá ir em ${schedule.serviceTitle} (${schedule.teamName}) e precisa de substituto.`,
+        type: "substituicao", data: { url: "/app/substituicoes" },
+      });
     }
+
+    // Avisa coordenadores da confirmação/recusa
+    const slotNome = allSlots.find((s) => s.memberId === selectedMemberId)?.memberName ?? "";
+    notify({ target: "coordinators" }, {
+      title: action === "confirm" ? "✅ Presença confirmada" : "❌ Ausência registrada",
+      message: `${slotNome} — ${schedule.teamName} · ${schedule.serviceTitle}`,
+      type: "confirmacao", data: { url: "/app/schedules" },
+    });
 
     setDone(true);
     setSubmitting(false);
