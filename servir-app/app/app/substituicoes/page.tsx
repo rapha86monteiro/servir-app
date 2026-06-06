@@ -7,6 +7,7 @@ import { getTeams } from "@/lib/firestore/teams";
 import type { Substituicao, Member, Team } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
+import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/utils";
 import { RefreshCw, CheckCircle2, X } from "lucide-react";
 
@@ -62,6 +63,12 @@ export default function SubstituicoesPage() {
 
       await aceitarSubstituicaoCompleta(sub, { memberId, name, teamName });
       alert(`Você assumiu o lugar de ${sub.membroName} em ${sub.position}! ✅`);
+      // Avisa coordenadores
+      notify({ target: "coordinators" }, {
+        title: "🔄 Substituição aceita",
+        message: `${name} vai servir no lugar de ${sub.membroName} (${sub.position}) — ${sub.serviceTitle}`,
+        type: "substituicao", data: { url: "/app/schedules" },
+      });
       load();
     } catch (err) {
       alert("Erro: " + String(err));
