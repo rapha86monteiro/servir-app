@@ -1,6 +1,7 @@
 // Cliente para disparar notificações via API route
 type NotifyTarget =
   | { target: "all" }
+  | { target: "coordinators" }
   | { target: "uids"; uids: string[] }
   | { target: "members"; memberIds: string[] };
 

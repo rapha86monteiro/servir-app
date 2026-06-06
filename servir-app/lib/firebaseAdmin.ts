@@ -118,6 +118,21 @@ export async function getAllUserTokens(): Promise<string[]> {
   return tokens;
 }
 
+export async function getCoordinatorTokens(): Promise<string[]> {
+  const a = getAdminApp();
+  const db = a.firestore();
+  const snap = await db.collection("users").get();
+  const tokens: string[] = [];
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    const isCoord = data.role === "admin" || data.funcao === "Coordenador";
+    if (!isCoord) return;
+    if (data.status === "pending" || data.status === "rejected") return;
+    if (Array.isArray(data.fcmTokens)) tokens.push(...data.fcmTokens);
+  });
+  return tokens;
+}
+
 export async function getTokensByMemberIds(memberIds: string[]): Promise<string[]> {
   if (memberIds.length === 0) return [];
   const a = getAdminApp();
