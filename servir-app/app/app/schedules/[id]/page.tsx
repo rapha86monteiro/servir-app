@@ -51,9 +51,13 @@ export default function ScheduleDetailPage() {
 
   if (!schedule) return <p className="text-center py-20 text-gray-400">Escala não encontrada.</p>;
 
-  const confirmed = schedule.slots.filter((s) => s.confirmed === true);
-  const declined = schedule.slots.filter((s) => s.confirmed === false);
-  const pending = schedule.slots.filter((s) => s.confirmed === null);
+  // Achata todas as posições em uma lista única (cada item leva sua posição)
+  const allSlots = Object.entries(schedule.positions ?? {}).flatMap(([position, slots]) =>
+    (slots ?? []).map((s) => ({ ...s, position }))
+  );
+  const confirmed = allSlots.filter((s) => s.confirmed === true);
+  const declined = allSlots.filter((s) => s.confirmed === false);
+  const pending = allSlots.filter((s) => s.confirmed === null);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -101,14 +105,14 @@ export default function ScheduleDetailPage() {
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100">
-          <p className="font-semibold text-gray-900">Membros escalados ({schedule.slots.length})</p>
+          <p className="font-semibold text-gray-900">Membros escalados ({allSlots.length})</p>
         </div>
         <ul className="divide-y divide-gray-50">
-          {schedule.slots.map((slot) => (
-            <li key={slot.memberId} className="flex items-center justify-between px-4 py-3">
+          {allSlots.map((slot) => (
+            <li key={`${slot.position}-${slot.memberId}`} className="flex items-center justify-between px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-gray-900">{slot.memberName}</p>
-                {slot.role && <p className="text-xs text-gray-400">{slot.role}</p>}
+                {slot.position && <p className="text-xs text-gray-400">{slot.position}</p>}
                 {slot.justification && (
                   <p className="text-xs text-red-500 mt-0.5">"{slot.justification}"</p>
                 )}
