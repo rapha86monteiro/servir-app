@@ -127,7 +127,8 @@ export interface Substituicao {
   serviceTitle: string;
   serviceDate: string;
   serviceTurno: string;
-  position: string;
+  positions: string[]; // posições da pessoa; o substituto assume todas
+  position?: string;   // legado (registros antigos com posição única)
   teamId: string;
   teamName: string;
   membroId: string;
