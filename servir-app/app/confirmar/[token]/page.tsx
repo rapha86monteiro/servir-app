@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getScheduleByToken, updateSchedulePositions } from "@/lib/firestore/schedules";
-import { createSubstituicao } from "@/lib/firestore/substituicoes";
-import { notify } from "@/lib/notify";
+import { getScheduleByToken } from "@/lib/firestore/schedules";
+import { responderEscala } from "@/lib/responderEscala";
 import type { Schedule } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { CheckCircle2, XCircle, RefreshCw } from "lucide-react";
@@ -47,56 +46,8 @@ export default function ConfirmarPage() {
     if (!schedule || !selectedMemberId || !action) return;
     setSubmitting(true);
 
-    const updatedPositions = { ...schedule.positions };
-    for (const position in updatedPositions) {
-      updatedPositions[position] = updatedPositions[position].map((slot) =>
-        slot.memberId === selectedMemberId
-          ? {
-              ...slot,
-              confirmed: action === "confirm",
-              justification: action === "decline" ? justification : "",
-              needsSubstitute: action === "decline",
-            }
-          : slot
-      );
-    }
-
-    await updateSchedulePositions(schedule.id, updatedPositions);
-
-    // Ao recusar, sempre abrir UM pedido de substituição por pessoa (substituto assume todas as posições)
-    if (action === "decline") {
-      const slot = allSlots.find((s) => s.memberId === selectedMemberId);
-      await createSubstituicao({
-        scheduleId: schedule.id,
-        serviceTitle: schedule.serviceTitle,
-        serviceDate: schedule.serviceDate,
-        serviceTurno: schedule.serviceTurno,
-        positions: myPositions,
-        teamId: schedule.teamId,
-        teamName: schedule.teamName,
-        membroId: selectedMemberId,
-        membroName: slot?.memberName ?? "",
-        justification,
-        status: "aberta",
-        createdAt: new Date().toISOString(),
-      });
-      // Avisa coordenadores do pedido de substituição
-      const slotName = slot?.memberName ?? "";
-      const posTxt = myPositions.length > 0 ? ` (${myPositions.join(", ")})` : "";
-      notify({ target: "coordinators" }, {
-        title: "🔄 Pedido de substituição",
-        message: `${slotName} não poderá ir em ${schedule.serviceTitle} (${schedule.teamName})${posTxt} e precisa de substituto.`,
-        type: "substituicao", data: { url: "/app/substituicoes" },
-      });
-    }
-
-    // Avisa coordenadores da confirmação/recusa
-    const slotNome = allSlots.find((s) => s.memberId === selectedMemberId)?.memberName ?? "";
-    notify({ target: "coordinators" }, {
-      title: action === "confirm" ? "✅ Presença confirmada" : "❌ Ausência registrada",
-      message: `${slotNome} — ${schedule.teamName} · ${schedule.serviceTitle}`,
-      type: "confirmacao", data: { url: "/app/schedules" },
-    });
+    const slot = allSlots.find((s) => s.memberId === selectedMemberId);
+    await responderEscala(schedule, selectedMemberId, slot?.memberName ?? "", action, justification);
 
     setDone(true);
     setSubmitting(false);
