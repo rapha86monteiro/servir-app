@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Registra no Mural (escrita admin, ignora as regras)
+    // expiresAt = data da escala: o aviso some do mural depois que a escala passa
     await db.collection("avisos").add({
       titulo: "🔄 Substituição solicitada",
       mensagem: `${membroName} não poderá servir em ${serviceTitle}${turnoTxt} (${teamName})${posTxt} — ${serviceDate}. Precisa de substituto.${
@@ -62,6 +63,8 @@ export async function POST(req: NextRequest) {
       }`,
       autor: "Sistema",
       fixado: false,
+      tipo: "substituicao",
+      expiresAt: serviceDate || "",
       createdAt: new Date().toISOString(),
     });
 
