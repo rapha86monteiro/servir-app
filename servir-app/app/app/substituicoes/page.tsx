@@ -61,12 +61,16 @@ export default function SubstituicoesPage() {
       const name = meuMembro?.name ?? appUser.name;
       const teamName = teams.find((t) => t.id === meuMembro?.teamId)?.name ?? "";
 
+      const posList = (sub.positions && sub.positions.length > 0
+        ? sub.positions
+        : sub.position ? [sub.position] : []).join(", ");
+
       await aceitarSubstituicaoCompleta(sub, { memberId, name, teamName });
-      alert(`Você assumiu o lugar de ${sub.membroName} em ${sub.position}! ✅`);
+      alert(`Você assumiu o lugar de ${sub.membroName}${posList ? ` em ${posList}` : ""}! ✅`);
       // Avisa coordenadores
       notify({ target: "coordinators" }, {
         title: "🔄 Substituição aceita",
-        message: `${name} vai servir no lugar de ${sub.membroName} (${sub.position}) — ${sub.serviceTitle}`,
+        message: `${name} vai servir no lugar de ${sub.membroName}${posList ? ` (${posList})` : ""} — ${sub.serviceTitle}`,
         type: "substituicao", data: { url: "/app/schedules" },
       });
       load();
@@ -126,9 +130,14 @@ export default function SubstituicoesPage() {
                         {sub.serviceTurno}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
                       <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{sub.teamName}</span>
-                      <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">📍 {sub.position}</span>
+                      {(sub.positions && sub.positions.length > 0
+                        ? sub.positions
+                        : sub.position ? [sub.position] : []
+                      ).map((pos) => (
+                        <span key={pos} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">📍 {pos}</span>
+                      ))}
                     </div>
                     {sub.justification && (
                       <p className="text-xs text-gray-400 mt-2 italic">"{sub.justification}"</p>
