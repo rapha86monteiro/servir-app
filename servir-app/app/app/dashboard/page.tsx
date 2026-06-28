@@ -392,7 +392,7 @@ export default function DashboardPage() {
                 <div key={s.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{s.membroName}</p>
-                    <p className="text-xs text-gray-400">{s.position} · {s.teamName} · {formatDate(s.serviceDate)}</p>
+                    <p className="text-xs text-gray-400">{(s.positions && s.positions.length > 0 ? s.positions.join(", ") : s.position) ?? ""} · {s.teamName} · {formatDate(s.serviceDate)}</p>
                   </div>
                   <ChevronRight size={14} className="text-gray-300 flex-shrink-0" />
                 </div>
