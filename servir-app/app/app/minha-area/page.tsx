@@ -9,20 +9,23 @@ import { getSchedules } from "@/lib/firestore/schedules";
 import { getMembers } from "@/lib/firestore/members";
 import { getMinhasIndisponibilidades, addIndisponibilidade, removeIndisponibilidade } from "@/lib/firestore/disponibilidade";
 import { requestNotificationPermission, isNotificationGranted } from "@/lib/notifications";
+import { responderEscala } from "@/lib/responderEscala";
 import type { Schedule, Indisponibilidade } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Input, Textarea } from "@/components/ui/Input";
 import {
   Award, CheckCircle2, XCircle, MapPin, TrendingUp, Calendar,
   CalendarX, Plus, Trash2, Bell, BellOff, Camera, Lock, Check, Info, User, HelpCircle,
+  CalendarCheck, RefreshCw,
 } from "lucide-react";
 import { abrirTutorial } from "@/components/WelcomeTutorial";
 
-type Tab = "jornada" | "disponibilidade" | "notificacoes" | "dados";
+type Tab = "jornada" | "escalas" | "disponibilidade" | "notificacoes" | "dados";
 
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: "jornada", label: "Jornada", icon: Award },
+  { key: "escalas", label: "Escalas", icon: CalendarCheck },
   { key: "disponibilidade", label: "Disponib.", icon: CalendarX },
   { key: "notificacoes", label: "Notif.", icon: Bell },
   { key: "dados", label: "Meus Dados", icon: User },
@@ -55,6 +58,12 @@ export default function MinhaAreaPage() {
 
   // Jornada
   const [participacoes, setParticipacoes] = useState<any[]>([]);
+  // Escalas (próximas) — confirmar presença / pedir substituição
+  const [minhasEscalas, setMinhasEscalas] = useState<{ schedule: Schedule; positions: string[]; confirmed: boolean | null }[]>([]);
+  const [meuMemberId, setMeuMemberId] = useState<string | undefined>(undefined);
+  const [respBusy, setRespBusy] = useState<string | null>(null);
+  const [declinandoId, setDeclinandoId] = useState<string | null>(null);
+  const [declineMotivo, setDeclineMotivo] = useState("");
   // Disponibilidade
   const [indisp, setIndisp] = useState<Indisponibilidade[]>([]);
   const [dispDate, setDispDate] = useState("");
@@ -90,22 +99,37 @@ export default function MinhaAreaPage() {
 
       const meu = members.find((m) => m.uid === uid);
       const meuId = meu?.id;
+      setMeuMemberId(meuId);
+
+      const hoje = new Date().toISOString().split("T")[0];
+
+      const isMeu = (slot: any) => slot.memberId === meuId || slot.memberName === appUser?.name;
 
       const parts: any[] = [];
+      const escalasFuturas: { schedule: Schedule; positions: string[]; confirmed: boolean | null }[] = [];
       scheds.forEach((s: Schedule) => {
         if (!s.positions) return;
+        const minhasPos: string[] = [];
+        let minhaConf: boolean | null = null;
         Object.entries(s.positions).forEach(([position, slots]) => {
           slots.forEach((slot) => {
-            if (slot.memberId === meuId || slot.memberName === appUser?.name) {
+            if (isMeu(slot)) {
               parts.push({ ...slot, position, serviceTitle: s.serviceTitle, serviceDate: s.serviceDate, id: s.id });
+              minhasPos.push(position);
+              minhaConf = slot.confirmed;
             }
           });
         });
+        // Próximas escalas (hoje em diante) onde estou escalado
+        if (minhasPos.length > 0 && s.serviceDate >= hoje) {
+          escalasFuturas.push({ schedule: s, positions: minhasPos, confirmed: minhaConf });
+        }
       });
       parts.sort((a, b) => b.serviceDate.localeCompare(a.serviceDate));
       setParticipacoes(parts);
+      escalasFuturas.sort((a, b) => a.schedule.serviceDate.localeCompare(b.schedule.serviceDate));
+      setMinhasEscalas(escalasFuturas);
 
-      const hoje = new Date().toISOString().split("T")[0];
       setIndisp(minhasInd.filter((i) => i.date >= hoje));
 
       const data: any = userSnap?.data() ?? {};
@@ -127,6 +151,28 @@ export default function MinhaAreaPage() {
   const posCount: Record<string, number> = {};
   participacoes.forEach((p) => { posCount[p.position] = (posCount[p.position] ?? 0) + 1; });
   const topPos = Object.entries(posCount).sort(([, a], [, b]) => b - a).slice(0, 3);
+
+  // ===== Escalas (confirmar / recusar) =====
+  async function confirmarPresenca(item: { schedule: Schedule }) {
+    if (respBusy) return;
+    setRespBusy(item.schedule.id);
+    try {
+      await responderEscala(item.schedule, meuMemberId ?? "", appUser?.name ?? "", "confirm", "");
+      await load();
+    } catch (e) { alert("Erro: " + String(e)); }
+    setRespBusy(null);
+  }
+  async function recusarPresenca(item: { schedule: Schedule }) {
+    if (respBusy) return;
+    setRespBusy(item.schedule.id);
+    try {
+      await responderEscala(item.schedule, meuMemberId ?? "", appUser?.name ?? "", "decline", declineMotivo);
+      setDeclinandoId(null);
+      setDeclineMotivo("");
+      await load();
+    } catch (e) { alert("Erro: " + String(e)); }
+    setRespBusy(null);
+  }
 
   // ===== Disponibilidade =====
   async function addDisp() {
@@ -290,6 +336,100 @@ export default function MinhaAreaPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* === ESCALAS (confirmar / recusar) === */}
+          {tab === "escalas" && (
+            <div className="space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 flex items-start gap-2">
+                <Info size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-700">Confirme sua presença nas próximas escalas. Se não puder ir, um pedido de substituição é aberto automaticamente.</p>
+              </div>
+
+              {minhasEscalas.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+                  <CalendarCheck size={28} className="text-gray-200 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">Você não tem escalas futuras no momento.</p>
+                </div>
+              ) : (
+                minhasEscalas.map((item) => {
+                  const s = item.schedule;
+                  const busy = respBusy === s.id;
+                  const declinando = declinandoId === s.id;
+                  return (
+                    <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+                      <div>
+                        <p className="font-bold text-gray-900">{s.serviceTitle}</p>
+                        <p className="text-xs text-gray-400">{s.teamName} · {s.serviceTurno} · {formatDate(s.serviceDate)}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {item.positions.map((pos) => (
+                          <span key={pos} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">📍 {pos}</span>
+                        ))}
+                      </div>
+
+                      {item.confirmed === true && (
+                        <div className="text-sm p-2 rounded-lg bg-green-50 text-green-700 flex items-center gap-1.5">
+                          <CheckCircle2 size={14} /> Presença confirmada. Pode alterar abaixo.
+                        </div>
+                      )}
+                      {item.confirmed === false && (
+                        <div className="text-sm p-2 rounded-lg bg-red-50 text-red-600 flex items-center gap-1.5">
+                          <RefreshCw size={14} /> Ausência registrada — substituto solicitado.
+                        </div>
+                      )}
+
+                      {declinando ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            label="Motivo da ausência (opcional)"
+                            value={declineMotivo}
+                            onChange={(e) => setDeclineMotivo(e.target.value)}
+                            placeholder="Ex: Viagem, trabalho, compromisso..."
+                          />
+                          <div className="flex items-start gap-2 p-2.5 bg-blue-50 rounded-xl border border-blue-200">
+                            <RefreshCw size={15} className="mt-0.5 text-blue-600 flex-shrink-0" />
+                            <p className="text-xs text-blue-600">Ao confirmar, o pedido de substituição é aberto e a equipe é notificada.</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => { setDeclinandoId(null); setDeclineMotivo(""); }}
+                              className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50"
+                            >
+                              Voltar
+                            </button>
+                            <button
+                              onClick={() => recusarPresenca(item)}
+                              disabled={busy}
+                              className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 disabled:opacity-50"
+                            >
+                              {busy ? "Enviando..." : "Confirmar ausência"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => confirmarPresenca(item)}
+                            disabled={busy}
+                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-green-200 text-green-700 text-sm font-semibold hover:bg-green-50 disabled:opacity-50"
+                          >
+                            <CheckCircle2 size={16} /> {busy ? "..." : "Vou estar presente"}
+                          </button>
+                          <button
+                            onClick={() => { setDeclinandoId(s.id); setDeclineMotivo(""); }}
+                            disabled={busy}
+                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <XCircle size={16} /> Não poderei ir
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
 
