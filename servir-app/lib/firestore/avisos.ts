@@ -11,13 +11,19 @@ export interface Aviso {
   fixado: boolean;
   imagem?: string;
   createdAt: string;
+  tipo?: string;       // ex: "substituicao"
+  expiresAt?: string;  // data (YYYY-MM-DD) até a qual o aviso fica visível (ex: data da escala)
 }
 
 const col = () => collection(db, "avisos");
 
 export async function getAvisos(): Promise<Aviso[]> {
   const snap = await getDocs(col());
-  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Aviso));
+  const hoje = new Date().toISOString().split("T")[0];
+  const items = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Aviso))
+    // Esconde avisos expirados (ex: substituição cuja data da escala já passou)
+    .filter((a) => !a.expiresAt || a.expiresAt >= hoje);
   // Fixados primeiro, depois por data desc
   return items.sort((a, b) => {
     if (a.fixado !== b.fixado) return a.fixado ? -1 : 1;

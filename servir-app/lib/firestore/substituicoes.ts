@@ -92,3 +92,18 @@ export async function aceitarSubstituicaoCompleta(
 export async function cancelarSubstituicao(id: string) {
   await updateDoc(doc(db, "substituicoes", id), { status: "cancelada" });
 }
+
+// Cancela pedidos em aberto de uma pessoa numa escala (ao mudar a resposta).
+export async function cancelarSubstituicoesAbertasDe(scheduleId: string, membroId: string) {
+  if (!scheduleId || !membroId) return;
+  const q = query(
+    col(),
+    where("scheduleId", "==", scheduleId),
+    where("membroId", "==", membroId),
+    where("status", "==", "aberta")
+  );
+  const snap = await getDocs(q);
+  await Promise.all(
+    snap.docs.map((d) => updateDoc(doc(db, "substituicoes", d.id), { status: "cancelada" }))
+  );
+}
