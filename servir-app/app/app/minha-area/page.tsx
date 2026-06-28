@@ -98,12 +98,14 @@ export default function MinhaAreaPage() {
       ]);
 
       const meu = members.find((m) => m.uid === uid);
-      const meuId = meu?.id;
+      const meuId = meu?.id ?? appUser?.memberId;
       setMeuMemberId(meuId);
 
       const hoje = new Date().toISOString().split("T")[0];
 
-      const isMeu = (slot: any) => slot.memberId === meuId || slot.memberName === appUser?.name;
+      const isMeu = (slot: any) =>
+        (!!meuId && slot.memberId === meuId) ||
+        (!!appUser?.name && slot.memberName === appUser?.name);
 
       const parts: any[] = [];
       const escalasFuturas: { schedule: Schedule; positions: string[]; confirmed: boolean | null }[] = [];
