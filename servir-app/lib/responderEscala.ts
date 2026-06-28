@@ -1,5 +1,5 @@
 import { updateSchedulePositions } from "./firestore/schedules";
-import { createSubstituicao } from "./firestore/substituicoes";
+import { createSubstituicao, cancelarSubstituicoesAbertasDe } from "./firestore/substituicoes";
 import { notify } from "./notify";
 import type { Schedule, PositionSlots } from "./types";
 
@@ -37,6 +37,10 @@ export async function responderEscala(
   }
 
   await updateSchedulePositions(schedule.id, positions);
+
+  // Sempre cancela pedidos em aberto dessa pessoa nessa escala (a resposta não é fixa:
+  // se mudar de ideia, o pedido anterior é encerrado e não duplica).
+  await cancelarSubstituicoesAbertasDe(schedule.id, memberId).catch(() => {});
 
   if (action === "decline") {
     // 1 pedido por pessoa, com todas as posições
