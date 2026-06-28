@@ -55,7 +55,7 @@ export default function ConfirmarPage() {
               ...slot,
               confirmed: action === "confirm",
               justification: action === "decline" ? justification : "",
-              needsSubstitute: action === "decline" ? needsSubstitute : false,
+              needsSubstitute: action === "decline",
             }
           : slot
       );
@@ -63,30 +63,29 @@ export default function ConfirmarPage() {
 
     await updateSchedulePositions(schedule.id, updatedPositions);
 
-    // Se pediu substituto, criar registro
-    if (action === "decline" && needsSubstitute) {
+    // Ao recusar, sempre abrir UM pedido de substituição por pessoa (substituto assume todas as posições)
+    if (action === "decline") {
       const slot = allSlots.find((s) => s.memberId === selectedMemberId);
-      for (const position of myPositions) {
-        await createSubstituicao({
-          scheduleId: schedule.id,
-          serviceTitle: schedule.serviceTitle,
-          serviceDate: schedule.serviceDate,
-          serviceTurno: schedule.serviceTurno,
-          position,
-          teamId: schedule.teamId,
-          teamName: schedule.teamName,
-          membroId: selectedMemberId,
-          membroName: slot?.memberName ?? "",
-          justification,
-          status: "aberta",
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await createSubstituicao({
+        scheduleId: schedule.id,
+        serviceTitle: schedule.serviceTitle,
+        serviceDate: schedule.serviceDate,
+        serviceTurno: schedule.serviceTurno,
+        positions: myPositions,
+        teamId: schedule.teamId,
+        teamName: schedule.teamName,
+        membroId: selectedMemberId,
+        membroName: slot?.memberName ?? "",
+        justification,
+        status: "aberta",
+        createdAt: new Date().toISOString(),
+      });
       // Avisa coordenadores do pedido de substituição
       const slotName = slot?.memberName ?? "";
+      const posTxt = myPositions.length > 0 ? ` (${myPositions.join(", ")})` : "";
       notify({ target: "coordinators" }, {
         title: "🔄 Pedido de substituição",
-        message: `${slotName} não poderá ir em ${schedule.serviceTitle} (${schedule.teamName}) e precisa de substituto.`,
+        message: `${slotName} não poderá ir em ${schedule.serviceTitle} (${schedule.teamName})${posTxt} e precisa de substituto.`,
         type: "substituicao", data: { url: "/app/substituicoes" },
       });
     }
@@ -133,19 +132,9 @@ export default function ConfirmarPage() {
             </>
           ) : (
             <>
-              {needsSubstitute ? (
-                <>
-                  <RefreshCw size={48} className="text-blue-500 mx-auto mb-4" />
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">Pedido enviado!</h2>
-                  <p className="text-gray-400 text-sm">Seu pedido de substituição foi registrado. O líder e a equipe serão notificados.</p>
-                </>
-              ) : (
-                <>
-                  <XCircle size={48} className="text-red-400 mx-auto mb-4" />
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">Ausência registrada</h2>
-                  <p className="text-gray-400 text-sm">Sua justificativa foi enviada ao líder.</p>
-                </>
-              )}
+              <RefreshCw size={48} className="text-blue-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Pedido enviado!</h2>
+              <p className="text-gray-400 text-sm">Sua ausência foi registrada e o pedido de substituição foi aberto automaticamente. O líder e a equipe serão notificados.</p>
             </>
           )}
         </div>
@@ -236,18 +225,13 @@ export default function ConfirmarPage() {
                     onChange={(e) => setJustification(e.target.value)}
                     placeholder="Ex: Viagem, trabalho, compromisso..."
                   />
-                  <label className="flex items-start gap-3 cursor-pointer p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
-                    <input
-                      type="checkbox"
-                      checked={needsSubstitute}
-                      onChange={(e) => setNeedsSubstitute(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 accent-blue-600"
-                    />
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
+                    <RefreshCw size={18} className="mt-0.5 text-blue-600 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-semibold text-blue-700">Preciso de substituto</p>
-                      <p className="text-xs text-blue-500 mt-0.5">Um alerta será enviado para a equipe</p>
+                      <p className="text-sm font-semibold text-blue-700">Um substituto será solicitado</p>
+                      <p className="text-xs text-blue-500 mt-0.5">Ao registrar a ausência, o pedido de substituição é aberto automaticamente e a equipe é notificada.</p>
                     </div>
-                  </label>
+                  </div>
                 </>
               )}
 
