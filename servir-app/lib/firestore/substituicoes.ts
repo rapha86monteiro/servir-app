@@ -52,31 +52,39 @@ export async function aceitarSubstituicaoCompleta(
     substitutoName: substituto.name,
   });
 
-  // 2. Atualiza a escala — substitui a pessoa na posição
+  // 2. Atualiza a escala — substitui a pessoa em TODAS as suas posições
   const schedSnap = await getDoc(doc(db, "schedules", sub.scheduleId));
   if (!schedSnap.exists()) return;
   const schedule = { id: schedSnap.id, ...schedSnap.data() } as Schedule;
 
   const positions: PositionSlots = { ...schedule.positions };
-  const slots = positions[sub.position] ?? [];
 
-  const novoSlot: ScheduleSlot = {
-    memberId: substituto.memberId,
-    memberName: substituto.name,
-    teamName: substituto.teamName,
-    confirmed: true,
-    justification: `Substituindo ${sub.membroName}`,
-    needsSubstitute: false,
-  };
+  // Posições da pessoa: usa o array novo; cai no campo legado se necessário
+  const targetPositions =
+    sub.positions && sub.positions.length > 0
+      ? sub.positions
+      : sub.position
+      ? [sub.position]
+      : [];
 
-  // Substitui o slot da pessoa original pelo substituto
-  const idx = slots.findIndex((s) => s.memberId === sub.membroId);
-  if (idx >= 0) {
-    slots[idx] = novoSlot;
-  } else {
-    slots.push(novoSlot);
+  for (const position of targetPositions) {
+    const slots = [...(positions[position] ?? [])];
+    const novoSlot: ScheduleSlot = {
+      memberId: substituto.memberId,
+      memberName: substituto.name,
+      teamName: substituto.teamName,
+      confirmed: true,
+      justification: `Substituindo ${sub.membroName}`,
+      needsSubstitute: false,
+    };
+    const idx = slots.findIndex((s) => s.memberId === sub.membroId);
+    if (idx >= 0) {
+      slots[idx] = novoSlot;
+    } else {
+      slots.push(novoSlot);
+    }
+    positions[position] = slots;
   }
-  positions[sub.position] = slots;
 
   await updateDoc(doc(db, "schedules", sub.scheduleId), { positions });
 }
