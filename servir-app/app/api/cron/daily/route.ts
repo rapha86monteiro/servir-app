@@ -106,6 +106,20 @@ export async function GET(req: NextRequest) {
       results.lembreteCulto = { membersCount: memberIdsEscalados.length, ...r };
     }
 
+    // 4) Limpeza: remove avisos expirados (ex: substituições cuja data da escala já passou)
+    const avisosSnap = await db.collection("avisos").get();
+    let avisosRemovidos = 0;
+    await Promise.all(
+      avisosSnap.docs.map(async (d) => {
+        const a = d.data();
+        if (a.expiresAt && a.expiresAt < today) {
+          await d.ref.delete();
+          avisosRemovidos++;
+        }
+      })
+    );
+    if (avisosRemovidos > 0) results.avisosRemovidos = avisosRemovidos;
+
     return NextResponse.json({ ok: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? String(err) }, { status: 500 });
