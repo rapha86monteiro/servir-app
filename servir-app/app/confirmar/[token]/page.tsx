@@ -88,6 +88,12 @@ export default function ConfirmarPage() {
               <p className="text-gray-400 text-sm">Sua ausência foi registrada e o pedido de substituição foi aberto automaticamente. O líder e a equipe serão notificados.</p>
             </>
           )}
+          <button
+            onClick={() => { setDone(false); setAction(null); }}
+            className="mt-6 w-full py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            Mudei de ideia — alterar resposta
+          </button>
         </div>
       </div>
     );
