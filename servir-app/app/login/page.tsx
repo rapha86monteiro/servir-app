@@ -59,7 +59,7 @@ export default function LoginPage() {
         return;
       }
       const token = await cred.user.getIdToken();
-      document.cookie = `firebase-token=${token}; path=/; max-age=3600`;
+      document.cookie = `firebase-token=${token}; path=/; max-age=${60 * 60 * 24 * 30}`;
       router.push("/app/dashboard");
     } catch {
       setError("E-mail ou senha incorretos.");
