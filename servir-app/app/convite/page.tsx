@@ -136,13 +136,16 @@ export default function ConvitePage() {
             const signed = await signInWithEmailAndPassword(auth, emailNorm, form.password);
             uid = signed.user.uid;
             const existing = await getDoc(doc(db, "users", uid));
-            if (existing.exists()) {
+            const exStatus = existing.exists() ? (existing.data() as any).status : null;
+            // Bloqueia apenas quem já tem cadastro válido (pendente/aprovado).
+            // Cadastro rejeitado pode se recadastrar e voltar para aprovação.
+            if (existing.exists() && exStatus !== "rejected") {
               await signOut();
               setError("Este e-mail já está cadastrado. Faça login ou use 'Esqueci minha senha'.");
               setSaving(false);
               return;
             }
-            // Sem registro → segue para criar (recuperação)
+            // Sem registro OU cadastro rejeitado → segue para (re)criar como pendente
           } catch {
             setError("Este e-mail já tem uma conta. Se foi você, faça login ou recupere a senha. Se a senha não confere, peça ajuda ao coordenador.");
             setSaving(false);
