@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { Input, Select } from "@/components/ui/Input";
 import Image from "next/image";
@@ -114,17 +114,56 @@ export default function ConvitePage() {
 
     setSaving(true);
     setError("");
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
-      const role =
-        form.funcao === "Coordenador" || form.funcao === "Líder" || form.funcao === "Co-líder"
-          ? "leader"
-          : "member";
 
-      await setDoc(doc(db, "users", cred.user.uid), {
-        uid: cred.user.uid,
+    const emailNorm = form.email.trim().toLowerCase();
+    const role =
+      form.funcao === "Coordenador" || form.funcao === "Líder" || form.funcao === "Co-líder"
+        ? "leader"
+        : "member";
+
+    try {
+      // 1) Obter/criar a conta de login (Auth)
+      let uid: string;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, emailNorm, form.password);
+        uid = cred.user.uid;
+      } catch (err: any) {
+        if (err.code === "auth/email-already-in-use") {
+          // Conta de login já existe. Pode ser um cadastro "órfão" (a conta foi criada
+          // mas o registro não chegou a ser salvo). Tentamos entrar com a senha informada
+          // e, se ainda não houver registro, criamos agora — recuperando o cadastro.
+          try {
+            const signed = await signInWithEmailAndPassword(auth, emailNorm, form.password);
+            uid = signed.user.uid;
+            const existing = await getDoc(doc(db, "users", uid));
+            if (existing.exists()) {
+              await signOut();
+              setError("Este e-mail já está cadastrado. Faça login ou use 'Esqueci minha senha'.");
+              setSaving(false);
+              return;
+            }
+            // Sem registro → segue para criar (recuperação)
+          } catch {
+            setError("Este e-mail já tem uma conta. Se foi você, faça login ou recupere a senha. Se a senha não confere, peça ajuda ao coordenador.");
+            setSaving(false);
+            return;
+          }
+        } else if (err.code === "auth/invalid-email") {
+          setError("E-mail inválido.");
+          setSaving(false);
+          return;
+        } else {
+          setError("Erro: " + (err?.message ?? String(err)));
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 2) Salvar o registro do cadastro (pendente)
+      await setDoc(doc(db, "users", uid), {
+        uid,
         name: capitalize(form.name.trim()),
-        email: form.email.trim().toLowerCase(),
+        email: emailNorm,
         role,
         funcao: form.funcao,
         teamIds: form.teamId ? [form.teamId] : [],
@@ -134,7 +173,7 @@ export default function ConvitePage() {
         createdAt: new Date().toISOString(),
       });
 
-      // Avisa coordenadores do novo cadastro pendente
+      // 3) Avisa coordenadores do novo cadastro pendente
       const teamName = teams.find((t) => t.id === form.teamId)?.name ?? "";
       notify({ target: "coordinators" }, {
         title: "👤 Novo cadastro para aprovar",
@@ -144,13 +183,7 @@ export default function ConvitePage() {
 
       setDone(true);
     } catch (err: any) {
-      if (err.code === "auth/email-already-in-use") {
-        setError("Este e-mail já está cadastrado.");
-      } else if (err.code === "auth/invalid-email") {
-        setError("E-mail inválido.");
-      } else {
-        setError("Erro: " + err.message);
-      }
+      setError("Erro ao salvar seu cadastro. Verifique a conexão e tente novamente.");
     }
     setSaving(false);
   }
