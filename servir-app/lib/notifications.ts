@@ -46,11 +46,12 @@ export async function requestNotificationPermission(uid: string): Promise<{ ok: 
       fcmTokens: arrayUnion(token),
     });
 
-    // Listener para notificações em primeiro plano
+    // Listener para notificações em primeiro plano (mensagem é só-dados agora)
     onMessage(messaging, (payload) => {
+      const d = (payload.data || {}) as any;
       if (Notification.permission === "granted") {
-        new Notification(payload.notification?.title || "Belém Servir", {
-          body: payload.notification?.body || "",
+        new Notification(d.title || "Belém Servir", {
+          body: d.body || "",
           icon: "/logo.png",
         });
       }

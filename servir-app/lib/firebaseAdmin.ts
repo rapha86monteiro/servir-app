@@ -52,15 +52,13 @@ export async function sendNotificationToTokens(
   for (let i = 0; i < unique.length; i += 500) {
     const batch = unique.slice(i, i + 500);
     try {
+      // Mensagem SOMENTE DADOS (sem "notification") para evitar notificação duplicada:
+      // o app/service worker exibe UMA vez. Se enviássemos "notification", o navegador
+      // exibiria automaticamente E o onBackgroundMessage exibiria de novo = 2 avisos.
       const response = await a.messaging().sendEachForMulticast({
         tokens: batch,
-        notification: { title, body },
-        data: data ?? {},
+        data: { title, body, ...(data ?? {}) },
         webpush: {
-          notification: {
-            icon: "/logo.png",
-            badge: "/logo.png",
-          },
           fcmOptions: {
             link: data?.url || "/app/dashboard",
           },
