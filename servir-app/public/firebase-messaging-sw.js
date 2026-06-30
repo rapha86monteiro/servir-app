@@ -13,14 +13,15 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || "Belém Servir";
+  const d = payload.data || {};
+  const title = d.title || "Belém Servir";
   const options = {
-    body: payload.notification?.body || "",
+    body: d.body || "",
     icon: "/logo.png",
     badge: "/logo.png",
-    tag: payload.data?.tag || "default",
-    data: payload.data || {},
+    data: d,
   };
+  if (d.tag) options.tag = d.tag; // só agrupa se o envio pedir explicitamente
   self.registration.showNotification(title, options);
 });
 
