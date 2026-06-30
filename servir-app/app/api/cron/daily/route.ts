@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminApp, sendNotificationToTokens, getAllUserTokens, getTokensByMemberIds } from "@/lib/firebaseAdmin";
+import { enviarAlertaSubstituicoesPendentes } from "@/lib/alertaSubstituicoes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,6 +120,9 @@ export async function GET(req: NextRequest) {
       })
     );
     if (avisosRemovidos > 0) results.avisosRemovidos = avisosRemovidos;
+
+    // 5) Alerta de substituições ainda em aberto (também roda às 18h por cron próprio)
+    results.substituicoesPendentes = await enviarAlertaSubstituicoesPendentes();
 
     return NextResponse.json({ ok: true, results });
   } catch (err: any) {
